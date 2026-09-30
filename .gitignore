@@ -9,3 +9,6 @@ wheels/
 # Virtual environments
 .venv
 markdowns_*
+
+# Generated synthetic datasets
+datasets/

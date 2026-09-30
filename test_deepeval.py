@@ -3,6 +3,7 @@ from deepeval import evaluate
 from deepeval.metrics import HallucinationMetric
 from deepeval.test_case import LLMTestCase
 from dotenv import load_dotenv
+from custom_llm import CustomOpenAI
 
 load_dotenv()
 
@@ -25,7 +26,8 @@ test_case = LLMTestCase(
 
 )
 
-halu_metric = HallucinationMetric(threshold=0.5)
+eval_llm = CustomOpenAI(model="openai/gpt-oss-120b")
+halu_metric = HallucinationMetric(threshold=0.5, model=eval_llm)
 
 ## 
 
