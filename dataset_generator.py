@@ -4,10 +4,10 @@ from dotenv import load_dotenv
 from datetime import datetime
 import os
 import json
-from custom_llm import CustomOpenAI, CustomEmbeddingModel
+from providers import CustomOpenAI, CustomEmbeddingModel
+from config import get_provider
 
 load_dotenv()
-
 
 OUTPUT_DIR = "./datasets"
 
@@ -33,8 +33,9 @@ def save_goldens(goldens: list, directory: str = OUTPUT_DIR) -> str:
     return file_path
 
 
-custom_model = CustomOpenAI(model="openai/gpt-oss-120b")
-custom_embedder = CustomEmbeddingModel()
+cfg = get_provider("albert")
+custom_model = CustomOpenAI.from_provider(cfg)
+custom_embedder = CustomEmbeddingModel.from_provider(cfg)
 
 synthesizer = Synthesizer(model=custom_model, max_concurrent=1)
 

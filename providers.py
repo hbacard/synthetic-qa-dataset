@@ -4,18 +4,11 @@ import json
 import os
 import time
 import asyncio
-from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import List
-load_dotenv()
 
-BASE_PROVIDER = "albert"
-API_ENV_VAR = "NEW_ALBERT_API_KEY"
-BASE_URL = "https://albert.api.etalab.gouv.fr/v1"
+from config import ProviderConfig, DEFAULT_MAX_RETRIES, DEFAULT_MIN_SLEEP, DEFAULT_MAX_DELAY, DEFAULT_TEMPERATURE
 
-DEFAULT_MAX_RETRIES = 8
-DEFAULT_MIN_SLEEP = 6.0
-DEFAULT_MAX_DELAY = 60.0
 RATE_LIMIT_STATUS = 429
 
 
@@ -34,19 +27,19 @@ def _is_retryable(exc: Exception) -> bool:
     return False
 
 
-def _retry_delay(attempt: int, min_sleep: float = DEFAULT_MIN_SLEEP, max_delay: float = DEFAULT_MAX_DELAY) -> float:
+def _retry_delay(attempt: int, min_sleep: float, max_delay: float) -> float:
     return min(min_sleep * (2 ** attempt), max_delay)
 
 
-def _sleep_with_backoff(attempt: int, min_sleep: float = DEFAULT_MIN_SLEEP, max_delay: float = DEFAULT_MAX_DELAY):
+def _sleep_with_backoff(attempt: int, min_sleep: float, max_delay: float):
     time.sleep(_retry_delay(attempt, min_sleep, max_delay))
 
 
-async def _async_sleep_with_backoff(attempt: int, min_sleep: float = DEFAULT_MIN_SLEEP, max_delay: float = DEFAULT_MAX_DELAY):
+async def _async_sleep_with_backoff(attempt: int, min_sleep: float, max_delay: float):
     await asyncio.sleep(_retry_delay(attempt, min_sleep, max_delay))
 
 
-def _call_with_retry(call, *args, max_retries: int = DEFAULT_MAX_RETRIES, **kwargs):
+def _call_with_retry(call, *args, max_retries: int = DEFAULT_MAX_RETRIES, min_sleep: float = DEFAULT_MIN_SLEEP, max_delay: float = DEFAULT_MAX_DELAY, **kwargs):
     last_exc = None
     for attempt in range(max_retries + 1):
         try:
@@ -59,11 +52,11 @@ def _call_with_retry(call, *args, max_retries: int = DEFAULT_MAX_RETRIES, **kwar
                 raise RequestLimitError(
                     f"Gave up after {max_retries + 1} attempts on rate-limit/connection error: {exc}"
                 ) from exc
-            _sleep_with_backoff(attempt)
+            _sleep_with_backoff(attempt, min_sleep, max_delay)
     raise last_exc
 
 
-async def _acall_with_retry(call, *args, max_retries: int = DEFAULT_MAX_RETRIES, **kwargs):
+async def _acall_with_retry(call, *args, max_retries: int = DEFAULT_MAX_RETRIES, min_sleep: float = DEFAULT_MIN_SLEEP, max_delay: float = DEFAULT_MAX_DELAY, **kwargs):
     last_exc = None
     for attempt in range(max_retries + 1):
         try:
@@ -76,20 +69,16 @@ async def _acall_with_retry(call, *args, max_retries: int = DEFAULT_MAX_RETRIES,
                 raise RequestLimitError(
                     f"Gave up after {max_retries + 1} attempts on rate-limit/connection error: {exc}"
                 ) from exc
-            await _async_sleep_with_backoff(attempt)
+            await _async_sleep_with_backoff(attempt, min_sleep, max_delay)
     raise last_exc
 
 
-def init_client(base_url: str = BASE_URL, api_key_env: str = API_ENV_VAR):
+def init_client(base_url, api_key_env: str):
     return OpenAI(base_url=base_url, api_key=os.environ.get(api_key_env, 'ollama'))
 
 
-def init_async_client(base_url: str = BASE_URL, api_key_env: str = API_ENV_VAR):
+def init_async_client(base_url, api_key_env: str):
     return AsyncOpenAI(base_url=base_url, api_key=os.environ.get(api_key_env, 'ollama'))
-
-
-client = init_client()
-a_client = init_async_client()
 
 
 def _deref(schema_obj: dict, json_schema: dict) -> dict:
@@ -165,21 +154,53 @@ def _build_messages(prompt: str, schema: BaseModel | None):
 
 
 class CustomOpenAI(DeepEvalBaseLLM):
-    def __init__(self, model, base_url: str = BASE_URL, api_key_env: str = API_ENV_VAR):
+    def __init__(
+        self,
+        model,
+        base_url,
+        api_env,
+        temperature: float = DEFAULT_TEMPERATURE,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        min_sleep: float = DEFAULT_MIN_SLEEP,
+        max_delay: float = DEFAULT_MAX_DELAY,
+    ):
         self.model = model
         super().__init__(model)
         self.base_url = base_url
-        self.api_key_env = api_key_env
-        self._client = init_client(self.base_url, self.api_key_env)
-        self._a_client = init_async_client(self.base_url, self.api_key_env)
+        self.api_env = api_env
+        self.temperature = temperature
+        self.max_retries = max_retries
+        self.min_sleep = min_sleep
+        self.max_delay = max_delay
+        self._client = init_client(self.base_url, self.api_env)
+        self._a_client = init_async_client(self.base_url, self.api_env)
+
+    @classmethod
+    def from_provider(cls, cfg: ProviderConfig):
+        return cls(
+            model=cfg.model,
+            base_url=cfg.base_url,
+            api_env=cfg.api_env,
+            temperature=cfg.temperature,
+            max_retries=cfg.max_retries,
+            min_sleep=cfg.min_sleep,
+            max_delay=cfg.max_delay,
+        )
 
     def load_model(self):
         return self.model
 
     def generate(self, prompt: str, schema: BaseModel | None = None):
         messages, kwargs = _build_messages(prompt, schema)
-        answer = _call_with_retry(self._client.chat.completions.create,
-            model=self.model, temperature=0.7, messages=messages, **kwargs)
+        answer = _call_with_retry(
+            self._client.chat.completions.create,
+            model=self.model,
+            temperature=self.temperature,
+            messages=messages,
+            max_retries=self.max_retries,
+            min_sleep=self.min_sleep,
+            max_delay=self.max_delay,
+            **kwargs)
 
         content = answer.choices[0].message.content
         if schema:
@@ -188,8 +209,15 @@ class CustomOpenAI(DeepEvalBaseLLM):
 
     async def a_generate(self, prompt: str, schema: BaseModel | None = None):
         messages, kwargs = _build_messages(prompt, schema)
-        answer = await _acall_with_retry(self._a_client.chat.completions.create,
-            model=self.model, temperature=0.7, messages=messages, **kwargs)
+        answer = await _acall_with_retry(
+            self._a_client.chat.completions.create,
+            model=self.model,
+            temperature=self.temperature,
+            messages=messages,
+            max_retries=self.max_retries,
+            min_sleep=self.min_sleep,
+            max_delay=self.max_delay,
+            **kwargs)
 
         content = answer.choices[0].message.content
         if schema:
@@ -197,40 +225,65 @@ class CustomOpenAI(DeepEvalBaseLLM):
         return content
 
     def get_model_name(self):
-        return "Custom OpenAI Model"
+        return f"{self.model} (custom)"
 
 
 class CustomEmbeddingModel(DeepEvalBaseEmbeddingModel):
     def __init__(
         self,
-        model: str = "bge-m3",
-        base_url: str = BASE_URL,
-        api_key_env: str = API_ENV_VAR,
+        model: str,
+        base_url,
+        api_env,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        min_sleep: float = DEFAULT_MIN_SLEEP,
+        max_delay: float = DEFAULT_MAX_DELAY,
     ):
         self.model = model
         super().__init__(model)
         self.base_url = base_url
-        self.api_key_env = api_key_env
-        self._client = init_client(self.base_url, self.api_key_env)
-        self._a_client = init_async_client(self.base_url, self.api_key_env)
+        self.api_env = api_env
+        self.max_retries = max_retries
+        self.min_sleep = min_sleep
+        self.max_delay = max_delay
+        self._client = init_client(self.base_url, self.api_env)
+        self._a_client = init_async_client(self.base_url, self.api_env)
+
+    @classmethod
+    def from_provider(cls, cfg: ProviderConfig):
+        return cls(
+            model=cfg.embedding,
+            base_url=cfg.base_url,
+            api_env=cfg.api_env,
+            max_retries=cfg.max_retries,
+            min_sleep=cfg.min_sleep,
+            max_delay=cfg.max_delay,
+        )
 
     def load_model(self):
         return self.model
 
     def embed_text(self, text: str) -> List[float]:
-        response = _call_with_retry(self._client.embeddings.create, input=text, model=self.model)
+        response = _call_with_retry(
+            self._client.embeddings.create, input=text, model=self.model,
+            max_retries=self.max_retries, min_sleep=self.min_sleep, max_delay=self.max_delay)
         return response.data[0].embedding
 
     def embed_texts(self, texts: List[str]) -> List[List[float]]:
-        response = _call_with_retry(self._client.embeddings.create, input=texts, model=self.model)
+        response = _call_with_retry(
+            self._client.embeddings.create, input=texts, model=self.model,
+            max_retries=self.max_retries, min_sleep=self.min_sleep, max_delay=self.max_delay)
         return [item.embedding for item in response.data]
 
     async def a_embed_text(self, text: str) -> List[float]:
-        response = await _acall_with_retry(self._a_client.embeddings.create, input=text, model=self.model)
+        response = await _acall_with_retry(
+            self._a_client.embeddings.create, input=text, model=self.model,
+            max_retries=self.max_retries, min_sleep=self.min_sleep, max_delay=self.max_delay)
         return response.data[0].embedding
 
     async def a_embed_texts(self, texts: List[str]) -> List[List[float]]:
-        response = await _acall_with_retry(self._a_client.embeddings.create, input=texts, model=self.model)
+        response = await _acall_with_retry(
+            self._a_client.embeddings.create, input=texts, model=self.model,
+            max_retries=self.max_retries, min_sleep=self.min_sleep, max_delay=self.max_delay)
         return [item.embedding for item in response.data]
 
     def get_model_name(self):
@@ -239,7 +292,8 @@ class CustomEmbeddingModel(DeepEvalBaseEmbeddingModel):
 
 if __name__ == "__main__":
     import asyncio
-    eval_llm = CustomOpenAI(model="openai/gpt-oss-120b")
-    prompt = "What's the capital of Canada"
-    res = asyncio.run(eval_llm.a_generate(prompt=prompt))
+    from config import get_provider
+    cfg = get_provider("albert")
+    llm = CustomOpenAI.from_provider(cfg)
+    res = asyncio.run(llm.a_generate(prompt="What's the capital of Canada"))
     print(res)

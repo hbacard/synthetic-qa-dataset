@@ -12,3 +12,5 @@ markdowns_*
 
 # Generated synthetic datasets
 datasets/
+
+config.yaml
