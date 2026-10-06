@@ -1,7 +1,7 @@
 # eval-rag
 
-Generate synthetic QA goldens for RAG evaluation from a set of documentation
-files, using the French Albert API (`https://albert.api.etalab.gouv.fr/v1`)
+Generate synthetic QA sylvers for RAG evaluation from a set of documentation
+files, using the your preferred API (`https://your-preferred-provider/v1`)
 instead of OpenAI.
 
 The pipeline relies on [deepeval](https://docs.confident-ai.com/)'s
@@ -16,7 +16,7 @@ provider settings in `config.yaml`).
   set per provider in `config.yaml` (`api_env`). For Albert, e.g.:
 
   ```bash
-  export ALBERT_API_KEY="your-key-here"
+  export PROVIDER_API_KEY="your-key-here"
   ```
 
   If the key is missing, requests fall back to the literal string `ollama`,
@@ -48,7 +48,7 @@ uv run python dataset_generator.py
 
 ### What happens, step by step
 
-1. `dataset_generator.py` loads the `albert` provider from `config.yaml` (via
+1. `dataset_generator.py` loads the `favorite-provider` provider from `config.yaml` (via
    `config.py`) and builds a `CustomOpenAI` (the generation/critic model) and a
    `CustomEmbeddingModel` (the embedder), both pointing at the configured
    `base_url`.
@@ -126,7 +126,7 @@ embedder = CustomEmbeddingModel.from_provider(cfg)  # embedding model
 ```
 
 The constructors also accept each setting as an explicit argument, so any
-OpenAI-compatible provider (Albert, OpenAI, Ollama, vLLM, Azure OpenAI-compatible
+OpenAI-compatible provider (OpenAI, Ollama, vLLM, Azure OpenAI-compatible
 endpoints, ...) works with the same code by adding another entry to
 `config.yaml` and calling `get_provider("<name>")`.
 
