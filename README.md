@@ -1,8 +1,8 @@
 # eval-rag
 
-Generate synthetic QA sylvers for RAG evaluation from a set of documentation
-files, using the your preferred API (`https://your-preferred-provider/v1`)
-instead of OpenAI.
+Generate synthetic QA goldens for RAG evaluation from a set of documentation
+files, using your preferred API (`https://your-preferred-provider/v1`)
+instead of OpenAI, then validate that those goldens are hallucination-free.
 
 The pipeline relies on [deepeval](https://docs.confident-ai.com/)'s
 `generate_goldens_from_docs`, connected to any OpenAI-compatible provider via a
@@ -42,28 +42,76 @@ one source document that is chunked into contexts.
 
 ## Running
 
+Generate goldens:
+
 ```bash
 uv run python dataset_generator.py
 ```
 
-### What happens, step by step
+Evaluate a generated dataset (checks each `expected_output` is grounded in its
+`context`):
 
-1. `dataset_generator.py` loads the `favorite-provider` provider from `config.yaml` (via
-   `config.py`) and builds a `CustomOpenAI` (the generation/critic model) and a
+```bash
+uv run python eval_synthetic_dataset.py
+```
+
+### Dataset generation: step by step
+
+1. `dataset_generator.py` loads a provider from `config.yaml` (via `config.py`)
+   and builds a `CustomOpenAI` (the generation/critic model) and a
    `CustomEmbeddingModel` (the embedder), both pointing at the configured
    `base_url`.
 2. It lists every file in `./docs/` and passes that list to
    `generate_goldens_from_docs`.
 3. `generate_goldens_from_docs` chunks each document into contexts (using the
    embedder), then generates a set of synthetic question/answer goldens.
-4. The resulting goldens are printed and **automatically saved** to
+4. The resulting goldens are **automatically saved** to
    `./datasets/goldens_<YYYYMMDD_HHMMSS>.json` (timestamped filename).
+
+### Dataset evaluation
+
+`eval_synthetic_dataset.py` loads a goldens dataset and, for each record, builds
+an `LLMTestCase` where `actual_output = expected_output` (the generated golden)
+is judged against its `context` with deepeval's `HallucinationMetric`. This
+validates that the synthetic dataset is hallucination-free; it is **not** a test
+of a RAG pipeline. Results are saved to
+`./evals/eval_data_<dataset_name>.json`.
+
+By default it evaluates the **most recent** `goldens_*.json` file in `datasets/`.
 
 ### Output
 
-- **Console**: one `INPUT:` / `EXPECTED:` block per golden.
-- **File**: `./datasets/goldens_<timestamp>.json` containing the full golden
-  records. `./datasets/` is git-ignored.
+- **Dataset generation**: `./datasets/goldens_<timestamp>.json` containing the
+  full golden records. `./datasets/` is git-ignored.
+- **Evaluation**: `./evals/eval_data_<dataset_name>.json`, one
+  `hallucination_metric` (score + reason) per golden. `./evals/` is git-ignored.
+
+### CLI options
+
+`dataset_generator.py`:
+
+| Option             | Default             | Purpose                                  |
+| ------------------ | ------------------- | ---------------------------------------- |
+| `--provider`       | `albert`            | Provider name in `config.yaml`.          |
+| `--docs-dir`       | `./docs`            | Directory containing the source docs.    |
+| `--output-dir`     | `./datasets`        | Where to save the generated goldens.     |
+| `--max-concurrent` | `1`                 | Concurrent Synthesizer requests (serial).|
+
+`eval_synthetic_dataset.py`:
+
+| Option         | Default                     | Purpose                                  |
+| -------------- | --------------------------- | ---------------------------------------- |
+| `--dataset`    | most recent `goldens_*.json`| Dataset file name in `datasets/`.        |
+| `--provider`   | `albert`                    | Provider name in `config.yaml`.          |
+| `--threshold`  | `0.8`                       | Hallucination metric threshold.          |
+| `--output-dir` | `./evals`                   | Where to save the evaluation results.    |
+
+Example with a local Ollama server:
+
+```bash
+uv run python dataset_generator.py --provider ollama
+uv run python eval_synthetic_dataset.py --provider ollama --threshold 0.9
+```
 
 ## Handling the rate limit
 
@@ -136,7 +184,10 @@ endpoints, ...) works with the same code by adding another entry to
 config.yaml       # per-provider settings (models, base_url, api_env, retries)
 config.py         # loads config.yaml, exposes get_provider(name)
 providers.py      # CustomOpenAI + CustomEmbeddingModel (provider-agnostic)
-dataset_generator.py      # end-to-end script: synthesize + auto-save goldens
+paths.py          # shared project paths (docs/, datasets/, evals/)
+dataset_generator.py      # generate synthetic goldens + auto-save
+eval_synthetic_dataset.py # evaluate goldens for hallucination
 docs/             # input documentation files
 datasets/         # generated goldens (git-ignored, timestamped files)
+evals/            # evaluation results (git-ignored)
 ```
