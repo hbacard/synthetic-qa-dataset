@@ -9,10 +9,12 @@ load_dotenv()
 
 
 context = [
-    "Supervised machine learning trains a model on labeled data, where each example has input features and a known target label. "
-    "The dataset is typically split into training and test sets: the model learns patterns from the training set and is then "
-    "evaluated on the unseen test set. Common evaluation metrics include accuracy, precision, recall, and F1-score. "
-    "Overfitting occurs when a model memorizes the training data but fails to generalize to new data."
+    (
+        "Supervised machine learning trains a model on labeled data, where each example has input features and a known target label. "
+        "The dataset is typically split into training and test sets: the model learns patterns from the training set and is then "
+        "evaluated on the unseen test set. Common evaluation metrics include accuracy, precision, recall, and F1-score. "
+        "Overfitting occurs when a model memorizes the training data but fails to generalize to new data."
+    )
 ]
 
 actual_output = """
