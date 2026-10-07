@@ -24,6 +24,18 @@ provider settings in `config.yaml`).
 
 ## Installation
 
+### Install with pdm
+
+```bash
+pdm install
+```
+
+This installs all dependencies (deepeval, openai, pydantic, chromadb,
+langchain, pypdf, docx2txt, ...) plus the `dev` group (black, ruff) into a
+local `.venv`.
+
+### Install with uv
+
 ```bash
 uv sync
 ```
