@@ -17,3 +17,6 @@ providers:
   #   max_retries: 8
   #   min_sleep: 6.0
   #   max_delay: 60.0
+
+llm_provider: ollama
+embedding_provider: ollama

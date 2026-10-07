@@ -1,5 +1,4 @@
-import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
@@ -13,6 +12,7 @@ DEFAULT_MAX_RETRIES = 8
 DEFAULT_MIN_SLEEP = 6.0
 DEFAULT_MAX_DELAY = 60.0
 DEFAULT_TEMPERATURE = 0.7
+DEFAULT_PROVIDER = "albert"
 
 
 @dataclass
@@ -28,12 +28,43 @@ class ProviderConfig:
     max_delay: float = DEFAULT_MAX_DELAY
 
 
-def _load_providers() -> dict[str, dict]:
+def _load_config() -> dict:
     if not CONFIG_PATH.exists():
         return {}
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f) or {}
-    return data.get("providers", {}) or {}
+        return yaml.safe_load(f) or {}
+
+
+def _load_providers() -> dict[str, dict]:
+    return _load_config().get("providers", {}) or {}
+
+
+def _provider_name(key: str) -> str:
+    """Return the provider configured for ``key``.
+
+    Falls back to a single provider (``DEFAULT_PROVIDER`` if configured, else
+    the first configured one) so legacy configs without the top-level keys keep
+    working.
+    """
+    name = _load_config().get(key)
+    if name:
+        return name
+    providers = _load_providers()
+    if DEFAULT_PROVIDER in providers:
+        return DEFAULT_PROVIDER
+    if providers:
+        return next(iter(providers))
+    return DEFAULT_PROVIDER
+
+
+def get_llm_provider_name() -> str:
+    """Return the name of the configured LLM provider."""
+    return _provider_name("llm_provider")
+
+
+def get_embedding_provider_name() -> str:
+    """Return the name of the configured embedding provider."""
+    return _provider_name("embedding_provider")
 
 
 def get_provider(name: str) -> ProviderConfig:

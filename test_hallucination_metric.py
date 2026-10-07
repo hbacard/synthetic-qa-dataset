@@ -1,10 +1,9 @@
-import os
-from deepeval import evaluate
 from deepeval.metrics import HallucinationMetric
 from deepeval.test_case import LLMTestCase
 from dotenv import load_dotenv
+
+from config import get_llm_provider_name, get_provider
 from providers import CustomOpenAI
-from config import get_provider
 
 load_dotenv()
 
@@ -60,7 +59,6 @@ MATE installé : assurez‑vous que les paquets sont présents et redémarrez 
 En suivant ces points, vous obtiendrez une connexion X2Go fonctionnelle, même lorsque le serveur n’est pas directement accessible depuis l’extérieur.
 """
 
-# 
 
 test_case = LLMTestCase(
     input="How to set X2GO client for MATE sessions and required external proxy configuration?",
@@ -69,7 +67,7 @@ test_case = LLMTestCase(
 
 )
 
-eval_llm = CustomOpenAI.from_provider(get_provider("albert"))
+eval_llm = CustomOpenAI.from_provider(get_provider(get_llm_provider_name()))
 halu_metric = HallucinationMetric(threshold=0.5, model=eval_llm)
 
 ## 

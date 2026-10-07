@@ -57,10 +57,10 @@ uv run python eval_synthetic_dataset.py
 
 ### Dataset generation: step by step
 
-1. `dataset_generator.py` loads a provider from `config.yaml` (via `config.py`)
-   and builds a `CustomOpenAI` (the generation/critic model) and a
-   `CustomEmbeddingModel` (the embedder), both pointing at the configured
-   `base_url`.
+1. `dataset_generator.py` loads the LLM provider and the embedding provider from
+   `config.yaml` (via `config.py`) and builds a `CustomOpenAI` (the
+   generation/critic model) from the LLM provider and a `CustomEmbeddingModel`
+   (the embedder) from the embedding provider.
 2. It lists every file in `./docs/` and passes that list to
    `generate_goldens_from_docs`.
 3. `generate_goldens_from_docs` chunks each document into contexts (using the
@@ -91,27 +91,28 @@ By default it evaluates the **most recent** `synthetic_qa_*.json` file in
 
 `dataset_generator.py`:
 
-| Option             | Default             | Purpose                                  |
-| ------------------ | ------------------- | ---------------------------------------- |
-| `--provider`       | `albert`            | Provider name in `config.yaml`.          |
-| `--docs-dir`       | `./docs`            | Directory containing the source docs.    |
-| `--output-dir`     | `./datasets`        | Where to save the generated dataset.     |
-| `--max-concurrent` | `1`                 | Concurrent Synthesizer requests (serial).|
+| Option                | Default                      | Purpose                                    |
+| --------------------- | ---------------------------- | ------------------------------------------ |
+| `--llm-provider`      | `llm_provider` in config.yaml| LLM (generation/critic) provider.          |
+| `--embedding-provider`| `embedding_provider` in config.yaml | Embedding provider.                |
+| `--docs-dir`          | `./docs`                     | Directory containing the source docs.      |
+| `--output-dir`        | `./datasets`                 | Where to save the generated dataset.       |
+| `--max-concurrent`    | `1`                          | Concurrent Synthesizer requests (serial).  |
 
 `eval_synthetic_dataset.py`:
 
 | Option         | Default                     | Purpose                                  |
 | -------------- | --------------------------- | ---------------------------------------- |
 | `--dataset`    | most recent `synthetic_qa_*.json`| Dataset file name in `datasets/`.        |
-| `--provider`   | `albert`                    | Provider name in `config.yaml`.          |
+| `--llm-provider` | `llm_provider` in config.yaml | LLM (critic) provider.                 |
 | `--threshold`  | `0.8`                       | Hallucination metric threshold.          |
 | `--output-dir` | `./evals`                   | Where to save the evaluation results.    |
 
 Example with a local Ollama server:
 
 ```bash
-uv run python dataset_generator.py --provider ollama
-uv run python eval_synthetic_dataset.py --provider ollama --threshold 0.9
+uv run python dataset_generator.py --llm-provider ollama --embedding-provider ollama
+uv run python eval_synthetic_dataset.py --llm-provider ollama --threshold 0.9
 ```
 
 ## Handling the rate limit
@@ -158,21 +159,31 @@ providers:
     max_retries: 8               # max attempts per call (default 8)
     min_sleep: 6.0               # initial backoff seconds (default 6.0)
     max_delay: 60.0              # backoff cap, seconds (default 60.0)
+
+# Which provider is used for the LLM and which for the embeddings. They can
+# differ (e.g. LLM from one API, embeddings from another).
+llm_provider: your_provider
+embedding_provider: your_provider
 ```
 
 `config.py` exposes `get_provider(name)` returning a `ProviderConfig`
-dataclass. Instantiate the clients from it directly, or via the
-`from_provider` classmethods:
+dataclass, plus `get_llm_provider_name()` and `get_embedding_provider_name()`
+returning the providers selected by the top-level keys. Instantiate the clients
+from the configs directly, or via the `from_provider` classmethods:
 
 ```python
-from config import get_provider
+from config import get_provider, get_llm_provider_name, get_embedding_provider_name
 from providers import CustomOpenAI, CustomEmbeddingModel
 
-cfg = get_provider("albert")
+llm_cfg = get_provider(get_llm_provider_name())
+embedding_cfg = get_provider(get_embedding_provider_name())
 
-llm = CustomOpenAI.from_provider(cfg)          # chat / critic model
-embedder = CustomEmbeddingModel.from_provider(cfg)  # embedding model
+llm = CustomOpenAI.from_provider(llm_cfg)          # chat / critic model
+embedder = CustomEmbeddingModel.from_provider(embedding_cfg)  # embedding model
 ```
+
+If `llm_provider` / `embedding_provider` are missing, both fall back to a single
+provider (the first configured one, or `albert`) so legacy configs keep working.
 
 The constructors also accept each setting as an explicit argument, so any
 OpenAI-compatible provider (OpenAI, Ollama, vLLM, Azure OpenAI-compatible
@@ -182,8 +193,8 @@ endpoints, ...) works with the same code by adding another entry to
 ## Project layout
 
 ```
-config.yaml       # per-provider settings (models, base_url, api_env, retries)
-config.py         # loads config.yaml, exposes get_provider(name)
+config.yaml       # per-provider settings + llm_provider / embedding_provider
+config.py         # loads config.yaml, exposes get_provider + provider selectors
 providers.py      # CustomOpenAI + CustomEmbeddingModel (provider-agnostic)
 paths.py          # shared project paths (docs/, datasets/, evals/)
 dataset_generator.py      # generate synthetic QA dataset + auto-save

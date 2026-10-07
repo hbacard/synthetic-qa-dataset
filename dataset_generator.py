@@ -1,9 +1,9 @@
 """
-Generates a synthetic dataset (goldens) for RAG evaluation.
+Generates a synthetic QA dataset from documentation files.
 
-Pipeline: loads a provider's configuration, builds the LLM model and the
-embedder, creates synthetic question/answer pairs from the documents in
-``docs/``, then saves the result in ``datasets/``.
+Pipeline: loads the LLM provider and the embedding provider configurations,
+builds the LLM model and the embedder, creates synthetic question/answer pairs
+from the documents in ``docs/``, then saves the result in ``datasets/``.
 """
 
 import argparse
@@ -13,10 +13,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from deepeval.synthesizer import Golden, Synthesizer
+from deepeval.dataset.golden import Golden
+from deepeval.synthesizer import Synthesizer
 from deepeval.synthesizer.config import ContextConstructionConfig
 
-from config import get_provider
+from config import get_embedding_provider_name, get_llm_provider_name, get_provider
 from paths import DATASETS_DIR, DOCS_DIR
 from providers import CustomEmbeddingModel, CustomOpenAI
 
@@ -38,7 +39,7 @@ def list_document_paths(docs_dir: Path) -> list[Path]:
     return sorted(paths)
 
 
-def golden_to_dict(golden: Golden) -> dict:
+def record_to_dict(golden: Golden) -> dict:
     """Convert a deepeval ``Golden`` object into a serializable dictionary."""
     return {
         "input": golden.input,
@@ -50,30 +51,35 @@ def golden_to_dict(golden: Golden) -> dict:
     }
 
 
-def save_goldens(goldens: list[Golden], output_dir: Path) -> Path:
-    """Save the goldens to a timestamped file and return its path."""
+def save_dataset(goldens: list[Golden], output_dir: Path) -> Path:
+    """Save the QA records to a timestamped file and return its path."""
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_path = output_dir / f"goldens_{timestamp}.json"
+    file_path = output_dir / f"synthetic_qa_{timestamp}.json"
     with open(file_path, "w", encoding="utf-8") as f_out:
         json.dump(
-            [golden_to_dict(g) for g in goldens],
+            [record_to_dict(g) for g in goldens],
             f_out,
             ensure_ascii=False,
             indent=2,
         )
-    LOGGER.info("Saved %d goldens to %s", len(goldens), file_path)
+    LOGGER.info("Saved %d records to %s", len(goldens), file_path)
     return file_path
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Generate synthetic goldens from docs/."
+        description="Generate a synthetic QA dataset from docs/."
     )
     parser.add_argument(
-        "--provider",
-        default="albert",
-        help="Provider name in config.yaml (default: albert).",
+        "--llm-provider",
+        default=get_llm_provider_name(),
+        help="LLM provider name in config.yaml (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--embedding-provider",
+        default=get_embedding_provider_name(),
+        help="Embedding provider name in config.yaml (default: %(default)s).",
     )
     parser.add_argument(
         "--docs-dir",
@@ -85,7 +91,7 @@ def main() -> None:
         "--output-dir",
         type=Path,
         default=DATASETS_DIR,
-        help="Output directory for the goldens (default: ./datasets).",
+        help="Output directory for the generated dataset (default: ./datasets).",
     )
     parser.add_argument(
         "--max-concurrent",
@@ -97,14 +103,15 @@ def main() -> None:
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-    cfg = get_provider(args.provider)
-    custom_model = CustomOpenAI.from_provider(cfg)
-    custom_embedder = CustomEmbeddingModel.from_provider(cfg)
+    llm_cfg = get_provider(args.llm_provider)
+    embedding_cfg = get_provider(args.embedding_provider)
+    custom_model = CustomOpenAI.from_provider(llm_cfg)
+    custom_embedder = CustomEmbeddingModel.from_provider(embedding_cfg)
 
     synthesizer = Synthesizer(model=custom_model, max_concurrent=args.max_concurrent)
 
     document_paths = [str(p) for p in list_document_paths(args.docs_dir)]
-    LOGGER.info("Generating goldens from %d document(s)...", len(document_paths))
+    LOGGER.info("Generating records from %d document(s)...", len(document_paths))
 
     try:
         goldens = synthesizer.generate_goldens_from_docs(
@@ -116,10 +123,10 @@ def main() -> None:
             ),
         )
     except Exception as exc:
-        LOGGER.error("Failed to generate goldens: %s", exc)
+        LOGGER.error("Failed to generate the dataset: %s", exc)
         sys.exit(1)
 
-    save_goldens(goldens, args.output_dir)
+    save_dataset(goldens, args.output_dir)
 
     for golden in goldens:
         LOGGER.info("INPUT : %s", golden.input)
