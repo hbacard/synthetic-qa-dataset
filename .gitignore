@@ -10,6 +10,9 @@ wheels/
 .venv
 markdowns_*
 
+# MkDocs build output
+site/
+
 # Generated synthetic datasets
 datasets/
 
