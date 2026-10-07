@@ -12,13 +12,18 @@ def test_root_dir_is_project_root():
 
 
 def test_derived_dirs_are_below_root_dir():
-    """DOCS_DIR, DATASETS_DIR and EVALS_DIR must sit below ROOT_DIR."""
-    assert paths.DOCS_DIR == paths.ROOT_DIR / "docs"
+    """CORPUS_DIR, DATASETS_DIR and EVALS_DIR must sit below ROOT_DIR."""
+    assert paths.CORPUS_DIR == paths.ROOT_DIR / "corpus"
     assert paths.DATASETS_DIR == paths.ROOT_DIR / "datasets"
     assert paths.EVALS_DIR == paths.ROOT_DIR / "evals"
 
 
 def test_derived_dirs_are_absolute():
     """All paths must be absolute so they do not depend on the CWD."""
-    for value in (paths.ROOT_DIR, paths.DOCS_DIR, paths.DATASETS_DIR, paths.EVALS_DIR):
+    for value in (
+        paths.ROOT_DIR,
+        paths.CORPUS_DIR,
+        paths.DATASETS_DIR,
+        paths.EVALS_DIR,
+    ):
         assert value.is_absolute()

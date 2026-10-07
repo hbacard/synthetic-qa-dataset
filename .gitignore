@@ -14,7 +14,7 @@ markdowns_*
 datasets/
 
 config.yaml
-docs
+corpus
 evals
 report-*
 implementation_*

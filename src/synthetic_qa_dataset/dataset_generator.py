@@ -3,7 +3,7 @@ Generates a synthetic QA dataset from documentation files.
 
 Pipeline: loads the LLM provider and the embedding provider configurations,
 builds the LLM model and the embedder, creates synthetic question/answer pairs
-from the documents in ``docs/``, then saves the result in ``datasets/``.
+from the documents in ``corpus/``, then saves the result in ``datasets/``.
 """
 
 import argparse
@@ -18,7 +18,7 @@ from deepeval.synthesizer import Synthesizer
 from deepeval.synthesizer.config import ContextConstructionConfig
 
 from .config import get_embedding_provider_name, get_llm_provider_name, get_provider
-from .paths import DATASETS_DIR, DOCS_DIR
+from .paths import CORPUS_DIR, DATASETS_DIR
 from .providers import CustomEmbeddingModel, CustomOpenAI
 
 LOGGER = logging.getLogger(__name__)
@@ -105,9 +105,9 @@ def save_dataset(goldens: list[Golden], output_dir: Path) -> Path:
 
 
 def main() -> None:
-    """Generate a synthetic QA dataset from ``docs/`` via the CLI."""
+    """Generate a synthetic QA dataset from ``corpus/`` via the CLI."""
     parser = argparse.ArgumentParser(
-        description="Generate a synthetic QA dataset from docs/."
+        description="Generate a synthetic QA dataset from corpus/."
     )
     parser.add_argument(
         "--llm-provider",
@@ -120,10 +120,10 @@ def main() -> None:
         help="Embedding provider name in config.yaml (default: %(default)s).",
     )
     parser.add_argument(
-        "--docs-dir",
+        "--corpus-dir",
         type=Path,
-        default=DOCS_DIR,
-        help="Directory of source documents (default: ./docs).",
+        default=CORPUS_DIR,
+        help="Directory of source documents (default: ./corpus).",
     )
     parser.add_argument(
         "--output-dir",
@@ -148,7 +148,7 @@ def main() -> None:
 
     synthesizer = Synthesizer(model=custom_model, max_concurrent=args.max_concurrent)
 
-    document_paths = [str(p) for p in list_document_paths(args.docs_dir)]
+    document_paths = [str(p) for p in list_document_paths(args.corpus_dir)]
     LOGGER.info("Generating records from %d document(s)...", len(document_paths))
 
     try:
