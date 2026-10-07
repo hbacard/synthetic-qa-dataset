@@ -10,11 +10,14 @@ wheels/
 .venv
 markdowns_*
 
+# MkDocs build output
+site/
+
 # Generated synthetic datasets
 datasets/
 
 config.yaml
-docs
+corpus
 evals
 report-*
 implementation_*

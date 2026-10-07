@@ -19,7 +19,10 @@ def _write_dataset(tmp_path, name, data) -> None:
 
 def test_latest_dataset_returns_last_sorted(tmp_path):
     """``latest_dataset`` must return the most recent file by name order."""
-    for name in ("synthetic_qa_20260101_000000.json", "synthetic_qa_20260102_000000.json"):
+    for name in (
+        "synthetic_qa_20260101_000000.json",
+        "synthetic_qa_20260102_000000.json",
+    ):
         _write_dataset(tmp_path, name, [])
     assert latest_dataset(tmp_path).name == "synthetic_qa_20260102_000000.json"
 
@@ -52,9 +55,7 @@ def test_load_data_not_a_list(tmp_path):
 
 def test_build_test_case_maps_expected_output():
     """``build_test_case`` must set actual_output to expected_output."""
-    case = build_test_case(
-        {"input": "Q", "expected_output": "A", "context": ["ctx"]}
-    )
+    case = build_test_case({"input": "Q", "expected_output": "A", "context": ["ctx"]})
     assert case.input == "Q"
     assert case.actual_output == "A"
     assert case.context == ["ctx"]

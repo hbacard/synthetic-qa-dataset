@@ -3,6 +3,6 @@
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
-DOCS_DIR = ROOT_DIR / "docs"
+CORPUS_DIR = ROOT_DIR / "corpus"
 DATASETS_DIR = ROOT_DIR / "datasets"
 EVALS_DIR = ROOT_DIR / "evals"

@@ -34,12 +34,12 @@ local `.venv`.
 
 ## Documents
 
-Put the source documentation inside `./docs/` as Markdown (or any format
+Put the source documentation inside `./corpus/` as Markdown (or any format
 supported by deepeval: `.md`, `.txt`, `.pdf`, `.docx`, ...). Each file becomes
 one source document that is chunked into contexts.
 
 `dataset_generator.py` automatically picks up every **file** directly inside
-`./docs/` (it does not recurse into subdirectories).
+`./corpus/` (it does not recurse into subdirectories).
 
 ## Running
 
@@ -69,7 +69,7 @@ pdm run python -m synthetic_qa_dataset.eval_synthetic_dataset
    `config.yaml` (via `config.py`) and builds a `CustomOpenAI` (the
    generation/critic model) from the LLM provider and a `CustomEmbeddingModel`
    (the embedder) from the embedding provider.
-2. It lists every file in `./docs/` and passes that list to
+2. It lists every file in `./corpus/` and passes that list to
    `generate_goldens_from_docs`.
 3. `generate_goldens_from_docs` chunks each document into contexts (using the
    embedder), then generates a set of synthetic question/answer records.
@@ -103,7 +103,7 @@ By default it evaluates the **most recent** `synthetic_qa_*.json` file in
 | --------------------- | ---------------------------- | ------------------------------------------ |
 | `--llm-provider`      | `llm_provider` in config.yaml| LLM (generation/critic) provider.          |
 | `--embedding-provider`| `embedding_provider` in config.yaml | Embedding provider.                |
-| `--docs-dir`          | `./docs`                     | Directory containing the source docs.      |
+| `--corpus-dir`        | `./corpus`                   | Directory containing the source docs.      |
 | `--output-dir`        | `./datasets`                 | Where to save the generated dataset.       |
 | `--max-concurrent`    | `1`                          | Concurrent Synthesizer requests (serial).  |
 
@@ -186,7 +186,7 @@ from providers import CustomOpenAI, CustomEmbeddingModel
 llm_cfg = get_provider(get_llm_provider_name())
 embedding_cfg = get_provider(get_embedding_provider_name())
 
-llm = CustomOpenAI.from_provider(llm_cfg)          # chat / critic model
+llm = CustomOpenAI.from_provider(llm_cfg)  # chat / critic model
 embedder = CustomEmbeddingModel.from_provider(embedding_cfg)  # embedding model
 ```
 
@@ -206,12 +206,12 @@ src/
   synthetic_qa_dataset/  # the package
     config.py            # loads config.yaml, exposes get_provider + selectors
     providers.py         # CustomOpenAI + CustomEmbeddingModel (provider-agnostic)
-    paths.py             # shared project paths (docs/, datasets/, evals/)
+    paths.py             # shared project paths (corpus/, datasets/, evals/)
     dataset_generator.py # generate synthetic QA dataset + auto-save
     eval_synthetic_dataset.py # validate dataset for hallucination
 examples/
   test_hallucination_metric.py # standalone metric demo script
-docs/             # input documentation files
+corpus/           # input documentation files (git-ignored)
 datasets/         # generated synthetic QA datasets (git-ignored, timestamped files)
 evals/            # evaluation results (git-ignored)
 ```
