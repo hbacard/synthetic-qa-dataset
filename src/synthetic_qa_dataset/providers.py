@@ -1,3 +1,10 @@
+"""Provider-agnostic OpenAI-compatible clients with exponential-backoff retries.
+
+Wraps ``OpenAI``/``AsyncOpenAI`` into deepeval-compatible LLM and embedding
+models, adding retry with exponential backoff on rate-limit (HTTP 429) and
+connection/timeout errors for any OpenAI-compatible provider.
+"""
+
 import asyncio
 import json
 import os
@@ -19,10 +26,22 @@ RATE_LIMIT_STATUS = 429
 
 
 class RequestLimitError(RuntimeError):
-    pass
+    """Raised when a call exhausts all retry attempts on retryable errors."""
 
 
 def _is_retryable(exc: Exception) -> bool:
+    """Return whether ``exc`` should trigger a retry.
+
+    Parameters
+    ----------
+    exc:
+        The exception raised by the API call.
+
+    Returns
+    -------
+    bool
+        True for rate-limit (HTTP 429) or connection/timeout errors.
+    """
     status = getattr(exc, "status_code", None)
     if status is None:
         status = getattr(getattr(exc, "response", None), "status_code", None)
@@ -32,14 +51,52 @@ def _is_retryable(exc: Exception) -> bool:
 
 
 def _retry_delay(attempt: int, min_sleep: float, max_delay: float) -> float:
+    """Compute the exponential backoff delay for an attempt.
+
+    Parameters
+    ----------
+    attempt:
+        Zero-based retry attempt number.
+    min_sleep:
+        Base delay (seconds) for the first retry.
+    max_delay:
+        Upper bound (seconds) on the delay.
+
+    Returns
+    -------
+    float
+        Delay (seconds) to sleep before retrying.
+    """
     return min(min_sleep * (2**attempt), max_delay)
 
 
 def _sleep_with_backoff(attempt: int, min_sleep: float, max_delay: float):
+    """Block for the exponential backoff delay of an attempt.
+
+    Parameters
+    ----------
+    attempt:
+        Zero-based retry attempt number.
+    min_sleep:
+        Base delay (seconds) for the first retry.
+    max_delay:
+        Upper bound (seconds) on the delay.
+    """
     time.sleep(_retry_delay(attempt, min_sleep, max_delay))
 
 
 async def _async_sleep_with_backoff(attempt: int, min_sleep: float, max_delay: float):
+    """Wait asynchronously for the exponential backoff delay of an attempt.
+
+    Parameters
+    ----------
+    attempt:
+        Zero-based retry attempt number.
+    min_sleep:
+        Base delay (seconds) for the first retry.
+    max_delay:
+        Upper bound (seconds) on the delay.
+    """
     await asyncio.sleep(_retry_delay(attempt, min_sleep, max_delay))
 
 
@@ -51,6 +108,28 @@ def _call_with_retry(
     max_delay: float = DEFAULT_MAX_DELAY,
     **kwargs,
 ):
+    """Invoke ``call`` synchronously, retrying on retryable errors.
+
+    Parameters
+    ----------
+    call:
+        Callable to invoke with ``*args`` and ``**kwargs``.
+    max_retries:
+        Maximum number of retry attempts after the first call.
+    min_sleep:
+        Base delay (seconds) for exponential backoff.
+    max_delay:
+        Upper bound (seconds) on the backoff delay.
+
+    Returns
+    -------
+    The return value of ``call``.
+
+    Raises
+    ------
+    RequestLimitError
+        If all attempts fail on retryable errors.
+    """
     last_exc = None
     for attempt in range(max_retries + 1):
         try:
@@ -75,6 +154,28 @@ async def _acall_with_retry(
     max_delay: float = DEFAULT_MAX_DELAY,
     **kwargs,
 ):
+    """Invoke ``call`` asynchronously, retrying on retryable errors.
+
+    Parameters
+    ----------
+    call:
+        Awaitable callable to invoke with ``*args`` and ``**kwargs``.
+    max_retries:
+        Maximum number of retry attempts after the first call.
+    min_sleep:
+        Base delay (seconds) for exponential backoff.
+    max_delay:
+        Upper bound (seconds) on the backoff delay.
+
+    Returns
+    -------
+    The awaited return value of ``call``.
+
+    Raises
+    ------
+    RequestLimitError
+        If all attempts fail on retryable errors.
+    """
     last_exc = None
     for attempt in range(max_retries + 1):
         try:
@@ -92,14 +193,58 @@ async def _acall_with_retry(
 
 
 def init_client(base_url, api_key_env: str):
+    """Create a synchronous OpenAI-compatible client.
+
+    Parameters
+    ----------
+    base_url:
+        Base URL of the provider API.
+    api_key_env:
+        Name of the environment variable holding the API key; falls back to
+        the literal string ``"ollama"`` when unset.
+
+    Returns
+    -------
+    OpenAI
+        The synchronous client.
+    """
     return OpenAI(base_url=base_url, api_key=os.environ.get(api_key_env, "ollama"))
 
 
 def init_async_client(base_url, api_key_env: str):
+    """Create an asynchronous OpenAI-compatible client.
+
+    Parameters
+    ----------
+    base_url:
+        Base URL of the provider API.
+    api_key_env:
+        Name of the environment variable holding the API key; falls back to
+        the literal string ``"ollama"`` when unset.
+
+    Returns
+    -------
+    AsyncOpenAI
+        The asynchronous client.
+    """
     return AsyncOpenAI(base_url=base_url, api_key=os.environ.get(api_key_env, "ollama"))
 
 
 def _deref(schema_obj: dict, json_schema: dict) -> dict:
+    """Resolve a JSON schema ``$ref`` against the top-level definitions.
+
+    Parameters
+    ----------
+    schema_obj:
+        JSON schema object, possibly containing a ``$ref``.
+    json_schema:
+        Root JSON schema holding the ``$defs``/``definitions`` maps.
+
+    Returns
+    -------
+    dict
+        The referenced schema, or ``schema_obj`` unchanged if no ``$ref``.
+    """
     ref = schema_obj.get("$ref")
     if ref:
         name = ref.split("/")[-1]
@@ -110,6 +255,18 @@ def _deref(schema_obj: dict, json_schema: dict) -> dict:
 
 
 def _pick_type(schema_obj: dict) -> dict:
+    """Pick the first non-null option of an ``anyOf``/``oneOf`` schema.
+
+    Parameters
+    ----------
+    schema_obj:
+        JSON schema object possibly using ``anyOf`` or ``oneOf``.
+
+    Returns
+    -------
+    dict
+        The first non-null sub-schema, or ``schema_obj`` unchanged.
+    """
     for key in ("anyOf", "oneOf"):
         options = schema_obj.get(key) or []
         for opt in options:
@@ -119,6 +276,19 @@ def _pick_type(schema_obj: dict) -> dict:
 
 
 def _type_example(prop: dict, json_schema: dict):
+    """Build an example value matching the type of a schema property.
+
+    Parameters
+    ----------
+    prop:
+        JSON schema describing the property.
+    json_schema:
+        Root JSON schema used to resolve references.
+
+    Returns
+    -------
+    Example value for the property type (object, list, bool, int/float or str).
+    """
     prop = _deref(prop, json_schema)
     prop = _pick_type(prop)
     ptype = prop.get("type")
@@ -136,6 +306,20 @@ def _type_example(prop: dict, json_schema: dict):
 
 
 def _object_example(field_schema: dict, json_schema: dict):
+    """Build an example object from a JSON schema's ``properties``.
+
+    Parameters
+    ----------
+    field_schema:
+        JSON schema describing an object.
+    json_schema:
+        Root JSON schema used to resolve references.
+
+    Returns
+    -------
+    dict
+        Example mapping of property name to example value.
+    """
     merged = {}
     for key in ("allOf",):
         for part in field_schema.get(key) or []:
@@ -146,6 +330,18 @@ def _object_example(field_schema: dict, json_schema: dict):
 
 
 def _schema_hint(schema: BaseModel) -> str:
+    """Serialize a Pydantic model as an example JSON object.
+
+    Parameters
+    ----------
+    schema:
+        Pydantic model describing the expected response structure.
+
+    Returns
+    -------
+    str
+        Compact JSON example used as a format hint.
+    """
     json_schema = schema.model_json_schema()
     if json_schema.get("type") == "array":
         example = [_object_example(json_schema.get("items", {}), json_schema)]
@@ -155,6 +351,23 @@ def _schema_hint(schema: BaseModel) -> str:
 
 
 def _build_messages(prompt: str, schema: BaseModel | None):
+    """Build the chat messages and extra kwargs for an API call.
+
+    When ``schema`` is provided, appends a structural hint and requests a
+    JSON object response.
+
+    Parameters
+    ----------
+    prompt:
+        User prompt to send.
+    schema:
+        Optional Pydantic model used to build the JSON format hint.
+
+    Returns
+    -------
+    tuple[list[dict], dict]
+        The messages list and the extra request kwargs.
+    """
     if schema is None:
         return [{"role": "user", "content": prompt}], {}
     hint = _schema_hint(schema)
@@ -170,6 +383,26 @@ def _build_messages(prompt: str, schema: BaseModel | None):
 
 
 class CustomOpenAI(DeepEvalBaseLLM):
+    """OpenAI-compatible LLM wrapper with exponential-backoff retries.
+
+    Attributes
+    ----------
+    model:
+        Model identifier passed to the provider API.
+    base_url:
+        Base URL of the provider API.
+    api_env:
+        Name of the environment variable holding the API key.
+    temperature:
+        Sampling temperature for LLM calls.
+    max_retries:
+        Maximum number of retry attempts on retryable errors.
+    min_sleep:
+        Base delay (seconds) for exponential backoff.
+    max_delay:
+        Upper bound (seconds) on the backoff delay.
+    """
+
     def __init__(
         self,
         model,
@@ -180,6 +413,25 @@ class CustomOpenAI(DeepEvalBaseLLM):
         min_sleep: float = DEFAULT_MIN_SLEEP,
         max_delay: float = DEFAULT_MAX_DELAY,
     ):
+        """Initialize the LLM wrapper and its sync/async clients.
+
+        Parameters
+        ----------
+        model:
+            Model identifier passed to the provider API.
+        base_url:
+            Base URL of the provider API.
+        api_env:
+            Name of the environment variable holding the API key.
+        temperature:
+            Sampling temperature for LLM calls.
+        max_retries:
+            Maximum number of retry attempts on retryable errors.
+        min_sleep:
+            Base delay (seconds) for exponential backoff.
+        max_delay:
+            Upper bound (seconds) on the backoff delay.
+        """
         self.model = model
         super().__init__(model)
         self.base_url = base_url
@@ -193,6 +445,18 @@ class CustomOpenAI(DeepEvalBaseLLM):
 
     @classmethod
     def from_provider(cls, cfg: ProviderConfig):
+        """Build a wrapper from a :class:`ProviderConfig`.
+
+        Parameters
+        ----------
+        cfg:
+            Provider configuration to instantiate from.
+
+        Returns
+        -------
+        CustomOpenAI
+            Configured LLM wrapper.
+        """
         return cls(
             model=cfg.model,
             base_url=cfg.base_url,
@@ -204,9 +468,24 @@ class CustomOpenAI(DeepEvalBaseLLM):
         )
 
     def load_model(self):
+        """Return the model identifier expected by deepeval."""
         return self.model
 
     def generate(self, prompt: str, schema: BaseModel | None = None):
+        """Generate a response for ``prompt``, optionally as a Pydantic model.
+
+        Parameters
+        ----------
+        prompt:
+            User prompt to send.
+        schema:
+            Optional Pydantic model; when set, the response is parsed into it.
+
+        Returns
+        -------
+        str or ``schema``
+            The raw text answer, or a parsed instance of ``schema`` if provided.
+        """
         messages, kwargs = _build_messages(prompt, schema)
         answer = _call_with_retry(
             self._client.chat.completions.create,
@@ -225,6 +504,20 @@ class CustomOpenAI(DeepEvalBaseLLM):
         return content
 
     async def a_generate(self, prompt: str, schema: BaseModel | None = None):
+        """Generate asynchronously, optionally as a Pydantic model.
+
+        Parameters
+        ----------
+        prompt:
+            User prompt to send.
+        schema:
+            Optional Pydantic model; when set, the response is parsed into it.
+
+        Returns
+        -------
+        str or ``schema``
+            The raw text answer, or a parsed instance of ``schema`` if provided.
+        """
         messages, kwargs = _build_messages(prompt, schema)
         answer = await _acall_with_retry(
             self._a_client.chat.completions.create,
@@ -243,10 +536,29 @@ class CustomOpenAI(DeepEvalBaseLLM):
         return content
 
     def get_model_name(self):
+        """Return the display name of the model."""
         return f"{self.model} (custom)"
 
 
 class CustomEmbeddingModel(DeepEvalBaseEmbeddingModel):
+    """OpenAI-compatible embedding wrapper with exponential-backoff retries.
+
+    Attributes
+    ----------
+    model:
+        Embedding model identifier passed to the provider API.
+    base_url:
+        Base URL of the provider API.
+    api_env:
+        Name of the environment variable holding the API key.
+    max_retries:
+        Maximum number of retry attempts on retryable errors.
+    min_sleep:
+        Base delay (seconds) for exponential backoff.
+    max_delay:
+        Upper bound (seconds) on the backoff delay.
+    """
+
     def __init__(
         self,
         model: str,
@@ -256,6 +568,23 @@ class CustomEmbeddingModel(DeepEvalBaseEmbeddingModel):
         min_sleep: float = DEFAULT_MIN_SLEEP,
         max_delay: float = DEFAULT_MAX_DELAY,
     ):
+        """Initialize the embedding wrapper and its sync/async clients.
+
+        Parameters
+        ----------
+        model:
+            Embedding model identifier passed to the provider API.
+        base_url:
+            Base URL of the provider API.
+        api_env:
+            Name of the environment variable holding the API key.
+        max_retries:
+            Maximum number of retry attempts on retryable errors.
+        min_sleep:
+            Base delay (seconds) for exponential backoff.
+        max_delay:
+            Upper bound (seconds) on the backoff delay.
+        """
         self.model = model
         super().__init__(model)
         self.base_url = base_url
@@ -268,6 +597,18 @@ class CustomEmbeddingModel(DeepEvalBaseEmbeddingModel):
 
     @classmethod
     def from_provider(cls, cfg: ProviderConfig):
+        """Build an embedding wrapper from a :class:`ProviderConfig`.
+
+        Parameters
+        ----------
+        cfg:
+            Provider configuration to instantiate from.
+
+        Returns
+        -------
+        CustomEmbeddingModel
+            Configured embedding wrapper.
+        """
         return cls(
             model=cfg.embedding,
             base_url=cfg.base_url,
@@ -278,9 +619,22 @@ class CustomEmbeddingModel(DeepEvalBaseEmbeddingModel):
         )
 
     def load_model(self):
+        """Return the embedding model identifier expected by deepeval."""
         return self.model
 
     def embed_text(self, text: str) -> list[float]:
+        """Embed a single text.
+
+        Parameters
+        ----------
+        text:
+            Text to embed.
+
+        Returns
+        -------
+        list[float]
+            The embedding vector.
+        """
         response = _call_with_retry(
             self._client.embeddings.create,
             input=text,
@@ -292,6 +646,18 @@ class CustomEmbeddingModel(DeepEvalBaseEmbeddingModel):
         return response.data[0].embedding
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        """Embed a list of texts.
+
+        Parameters
+        ----------
+        texts:
+            Texts to embed.
+
+        Returns
+        -------
+        list[list[float]]
+            The embedding vectors, one per input text.
+        """
         response = _call_with_retry(
             self._client.embeddings.create,
             input=texts,
@@ -303,6 +669,18 @@ class CustomEmbeddingModel(DeepEvalBaseEmbeddingModel):
         return [item.embedding for item in response.data]
 
     async def a_embed_text(self, text: str) -> list[float]:
+        """Embed a single text asynchronously.
+
+        Parameters
+        ----------
+        text:
+            Text to embed.
+
+        Returns
+        -------
+        list[float]
+            The embedding vector.
+        """
         response = await _acall_with_retry(
             self._a_client.embeddings.create,
             input=text,
@@ -314,6 +692,18 @@ class CustomEmbeddingModel(DeepEvalBaseEmbeddingModel):
         return response.data[0].embedding
 
     async def a_embed_texts(self, texts: list[str]) -> list[list[float]]:
+        """Embed a list of texts asynchronously.
+
+        Parameters
+        ----------
+        texts:
+            Texts to embed.
+
+        Returns
+        -------
+        list[list[float]]
+            The embedding vectors, one per input text.
+        """
         response = await _acall_with_retry(
             self._a_client.embeddings.create,
             input=texts,
@@ -325,6 +715,7 @@ class CustomEmbeddingModel(DeepEvalBaseEmbeddingModel):
         return [item.embedding for item in response.data]
 
     def get_model_name(self):
+        """Return the display name of the model."""
         return f"{self.model} (custom)"
 
 
