@@ -7,7 +7,7 @@ from deepeval.models import DeepEvalBaseEmbeddingModel, DeepEvalBaseLLM
 from openai import AsyncOpenAI, OpenAI
 from pydantic import BaseModel
 
-from config import (
+from .config import (
     DEFAULT_MAX_DELAY,
     DEFAULT_MAX_RETRIES,
     DEFAULT_MIN_SLEEP,
@@ -331,7 +331,7 @@ class CustomEmbeddingModel(DeepEvalBaseEmbeddingModel):
 if __name__ == "__main__":
     import asyncio
 
-    from config import get_provider
+    from .config import get_provider
 
     cfg = get_provider("albert")
     llm = CustomOpenAI.from_provider(cfg)

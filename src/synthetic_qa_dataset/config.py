@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-CONFIG_PATH = Path(__file__).resolve().parent / "config.yaml"
+CONFIG_PATH = Path(__file__).resolve().parents[2] / "config.yaml"
 
 DEFAULT_MAX_RETRIES = 8
 DEFAULT_MIN_SLEEP = 6.0
