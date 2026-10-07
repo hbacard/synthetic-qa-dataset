@@ -1,13 +1,19 @@
-from deepeval.models import DeepEvalBaseLLM, DeepEvalBaseEmbeddingModel
-from openai import OpenAI, AsyncOpenAI
+import asyncio
 import json
 import os
 import time
-import asyncio
-from pydantic import BaseModel
-from typing import List
 
-from config import ProviderConfig, DEFAULT_MAX_RETRIES, DEFAULT_MIN_SLEEP, DEFAULT_MAX_DELAY, DEFAULT_TEMPERATURE
+from deepeval.models import DeepEvalBaseEmbeddingModel, DeepEvalBaseLLM
+from openai import AsyncOpenAI, OpenAI
+from pydantic import BaseModel
+
+from config import (
+    DEFAULT_MAX_DELAY,
+    DEFAULT_MAX_RETRIES,
+    DEFAULT_MIN_SLEEP,
+    DEFAULT_TEMPERATURE,
+    ProviderConfig,
+)
 
 RATE_LIMIT_STATUS = 429
 
@@ -262,25 +268,25 @@ class CustomEmbeddingModel(DeepEvalBaseEmbeddingModel):
     def load_model(self):
         return self.model
 
-    def embed_text(self, text: str) -> List[float]:
+    def embed_text(self, text: str) -> list[float]:
         response = _call_with_retry(
             self._client.embeddings.create, input=text, model=self.model,
             max_retries=self.max_retries, min_sleep=self.min_sleep, max_delay=self.max_delay)
         return response.data[0].embedding
 
-    def embed_texts(self, texts: List[str]) -> List[List[float]]:
+    def embed_texts(self, texts: list[str]) -> list[list[float]]:
         response = _call_with_retry(
             self._client.embeddings.create, input=texts, model=self.model,
             max_retries=self.max_retries, min_sleep=self.min_sleep, max_delay=self.max_delay)
         return [item.embedding for item in response.data]
 
-    async def a_embed_text(self, text: str) -> List[float]:
+    async def a_embed_text(self, text: str) -> list[float]:
         response = await _acall_with_retry(
             self._a_client.embeddings.create, input=text, model=self.model,
             max_retries=self.max_retries, min_sleep=self.min_sleep, max_delay=self.max_delay)
         return response.data[0].embedding
 
-    async def a_embed_texts(self, texts: List[str]) -> List[List[float]]:
+    async def a_embed_texts(self, texts: list[str]) -> list[list[float]]:
         response = await _acall_with_retry(
             self._a_client.embeddings.create, input=texts, model=self.model,
             max_retries=self.max_retries, min_sleep=self.min_sleep, max_delay=self.max_delay)
@@ -292,6 +298,7 @@ class CustomEmbeddingModel(DeepEvalBaseEmbeddingModel):
 
 if __name__ == "__main__":
     import asyncio
+
     from config import get_provider
     cfg = get_provider("albert")
     llm = CustomOpenAI.from_provider(cfg)
