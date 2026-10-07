@@ -29,8 +29,17 @@ synthetic-qa-evaluate = "synthetic_qa_dataset.eval_synthetic_dataset:main"
 where = ["src"]
 exclude = ["evals", "datasets", "markdowns_support"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["synthetic_qa_dataset"]
+
 [dependency-groups]
 dev = [
     "black[jupyter]>=26.10.0",
     "ruff>=0.16.10",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
 ]
