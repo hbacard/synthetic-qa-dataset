@@ -1,7 +1,7 @@
 [project]
-name = "eval-rag"
+name = "synthetic-qa-dataset"
 version = "0.1.0"
-description = "Add your description here"
+description = "Generate and validate a synthetic QA dataset from documentation files."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -15,4 +15,24 @@ dependencies = [
     "pypdf",
     "docx2txt",
     "tiktoken",
+]
+
+[tool.setuptools]
+py-modules = [
+    "config",
+    "dataset_generator",
+    "eval_synthetic_dataset",
+    "paths",
+    "providers",
+    "test_hallucination_metric",
+]
+
+[tool.setuptools.packages.find]
+include = []
+exclude = ["evals", "datasets", "markdowns_support"]
+
+[dependency-groups]
+dev = [
+    "black[jupyter]>=26.10.0",
+    "ruff>=0.16.10",
 ]

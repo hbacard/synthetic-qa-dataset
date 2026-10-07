@@ -1,8 +1,8 @@
-# eval-rag
+# synthetic-qa-dataset
 
-Generate synthetic QA goldens for RAG evaluation from a set of documentation
-files, using your preferred API (`https://your-preferred-provider/v1`)
-instead of OpenAI, then validate that those goldens are hallucination-free.
+Generate a synthetic QA dataset from a set of documentation files, using your
+preferred API (`https://your-preferred-provider/v1`) instead of OpenAI, then
+validate that the dataset is hallucination-free.
 
 The pipeline relies on [deepeval](https://docs.confident-ai.com/)'s
 `generate_goldens_from_docs`, connected to any OpenAI-compatible provider via a
@@ -42,7 +42,7 @@ one source document that is chunked into contexts.
 
 ## Running
 
-Generate goldens:
+Generate the dataset:
 
 ```bash
 uv run python dataset_generator.py
@@ -64,27 +64,28 @@ uv run python eval_synthetic_dataset.py
 2. It lists every file in `./docs/` and passes that list to
    `generate_goldens_from_docs`.
 3. `generate_goldens_from_docs` chunks each document into contexts (using the
-   embedder), then generates a set of synthetic question/answer goldens.
-4. The resulting goldens are **automatically saved** to
-   `./datasets/goldens_<YYYYMMDD_HHMMSS>.json` (timestamped filename).
+   embedder), then generates a set of synthetic question/answer records.
+4. The resulting records are **automatically saved** to
+   `./datasets/synthetic_qa_<YYYYMMDD_HHMMSS>.json` (timestamped filename).
 
 ### Dataset evaluation
 
-`eval_synthetic_dataset.py` loads a goldens dataset and, for each record, builds
-an `LLMTestCase` where `actual_output = expected_output` (the generated golden)
-is judged against its `context` with deepeval's `HallucinationMetric`. This
-validates that the synthetic dataset is hallucination-free; it is **not** a test
-of a RAG pipeline. Results are saved to
+`eval_synthetic_dataset.py` loads a synthetic dataset and, for each record,
+builds an `LLMTestCase` where `actual_output = expected_output` (the generated
+answer) is judged against its `context` with deepeval's `HallucinationMetric`.
+This validates that the synthetic dataset is hallucination-free; it is **not** a
+test of a RAG pipeline. Results are saved to
 `./evals/eval_data_<dataset_name>.json`.
 
-By default it evaluates the **most recent** `goldens_*.json` file in `datasets/`.
+By default it evaluates the **most recent** `synthetic_qa_*.json` file in
+`datasets/`.
 
 ### Output
 
-- **Dataset generation**: `./datasets/goldens_<timestamp>.json` containing the
-  full golden records. `./datasets/` is git-ignored.
+- **Dataset generation**: `./datasets/synthetic_qa_<timestamp>.json` containing
+  the full QA records. `./datasets/` is git-ignored.
 - **Evaluation**: `./evals/eval_data_<dataset_name>.json`, one
-  `hallucination_metric` (score + reason) per golden. `./evals/` is git-ignored.
+  `hallucination_metric` (score + reason) per record. `./evals/` is git-ignored.
 
 ### CLI options
 
@@ -94,14 +95,14 @@ By default it evaluates the **most recent** `goldens_*.json` file in `datasets/`
 | ------------------ | ------------------- | ---------------------------------------- |
 | `--provider`       | `albert`            | Provider name in `config.yaml`.          |
 | `--docs-dir`       | `./docs`            | Directory containing the source docs.    |
-| `--output-dir`     | `./datasets`        | Where to save the generated goldens.     |
+| `--output-dir`     | `./datasets`        | Where to save the generated dataset.     |
 | `--max-concurrent` | `1`                 | Concurrent Synthesizer requests (serial).|
 
 `eval_synthetic_dataset.py`:
 
 | Option         | Default                     | Purpose                                  |
 | -------------- | --------------------------- | ---------------------------------------- |
-| `--dataset`    | most recent `goldens_*.json`| Dataset file name in `datasets/`.        |
+| `--dataset`    | most recent `synthetic_qa_*.json`| Dataset file name in `datasets/`.        |
 | `--provider`   | `albert`                    | Provider name in `config.yaml`.          |
 | `--threshold`  | `0.8`                       | Hallucination metric threshold.          |
 | `--output-dir` | `./evals`                   | Where to save the evaluation results.    |
@@ -116,7 +117,7 @@ uv run python eval_synthetic_dataset.py --provider ollama --threshold 0.9
 ## Handling the rate limit
 
 The Albert API allows about **10 requests/minute**. A large run (several
-documents × several contexts × several goldens each) easily exceeds this and
+documents × several contexts × several QA records each) easily exceeds this and
 Albert returns HTTP `429`.
 
 `providers.py` handles this automatically:
@@ -185,9 +186,9 @@ config.yaml       # per-provider settings (models, base_url, api_env, retries)
 config.py         # loads config.yaml, exposes get_provider(name)
 providers.py      # CustomOpenAI + CustomEmbeddingModel (provider-agnostic)
 paths.py          # shared project paths (docs/, datasets/, evals/)
-dataset_generator.py      # generate synthetic goldens + auto-save
-eval_synthetic_dataset.py # evaluate goldens for hallucination
+dataset_generator.py      # generate synthetic QA dataset + auto-save
+eval_synthetic_dataset.py # validate dataset for hallucination
 docs/             # input documentation files
-datasets/         # generated goldens (git-ignored, timestamped files)
+datasets/         # generated synthetic QA datasets (git-ignored, timestamped files)
 evals/            # evaluation results (git-ignored)
 ```

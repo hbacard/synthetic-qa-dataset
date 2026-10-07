@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "eval-rag"
-abstract: "Generate synthetic QA goldens for RAG evaluation from a set of documentation files, then validate that those goldens are hallucination-free."
+title: "synthetic-qa-dataset"
+abstract: "Generate a synthetic QA dataset from a set of documentation files, then validate that the dataset is hallucination-free."
 version: "0.1.0"
 date-released: "2026-10-07"
 license: "MIT"

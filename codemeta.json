@@ -1,11 +1,11 @@
 {
   "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
   "@type": "SoftwareSourceCode",
-  "name": "eval-rag",
-  "description": "Generate synthetic QA goldens for RAG evaluation from a set of documentation files, then validate that those goldens are hallucination-free.",
+  "name": "synthetic-qa-dataset",
+  "description": "Generate a synthetic QA dataset from a set of documentation files, then validate that the dataset is hallucination-free.",
   "version": "0.1.0",
   "license": "https://spdx.org/licenses/MIT",
-  "codeRepository": "https://github.com/hbacard/eval-rag",
+  "codeRepository": "https://github.com/hbacard/synthetic-qa-dataset",
   "programmingLanguage": {
     "@type": "ComputerLanguage",
     "name": "Python",
