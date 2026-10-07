@@ -20,3 +20,4 @@ report-*
 implementation_*
 .pdm-python
 .python-version
+_docs
