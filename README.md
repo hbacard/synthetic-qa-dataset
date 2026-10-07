@@ -1,5 +1,10 @@
 # synthetic-qa-dataset
 
+[![CI](https://img.shields.io/github/actions/workflow/status/hbacard/synthetic-qa-dataset/ci.yml?branch=main)](https://github.com/hbacard/synthetic-qa-dataset/actions)
+<!-- [![DOI](https://img.shields.io/badge/DOI-10.5281/zenodo.XXXXXXXXX-blue)](https://doi.org/10.5281/zenodo.XXXXXXXXX) -->
+[![License: MIT](https://img.shields.io/github/license/hbacard/synthetic-qa-dataset)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/)
+
 Generate a synthetic QA dataset from a set of documentation files, using your
 preferred API (`https://your-preferred-provider/v1`) instead of OpenAI, then
 validate that the dataset is hallucination-free.
