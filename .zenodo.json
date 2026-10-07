@@ -1,0 +1,21 @@
+{
+  "title": "synthetic-qa-dataset",
+  "upload_type": "software",
+  "description": "Generate a synthetic QA dataset from a set of documentation files, then validate that the dataset is hallucination-free.",
+  "creators": [
+    {
+      "name": "Bacard, Hugo",
+      "affiliation": "IJCLab",
+      "orcid": "0000-0001-9216-494X"
+    }
+  ],
+  "keywords": [
+    "RAG evaluation",
+    "synthetic data generation",
+    "hallucination detection",
+    "deepeval",
+    "LLM"
+  ],
+  "license": "MIT",
+  "version": "0.1.0"
+}
