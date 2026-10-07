@@ -11,7 +11,7 @@ provider settings in `config.yaml`).
 
 ## Prerequisites
 
-- Python 3.12 with `uv` installed.
+- Python 3.12 with `pdm` installed.
 - An API key for your provider in the environment. The env variable name is
   set per provider in `config.yaml` (`api_env`). For Albert, e.g.:
 
@@ -24,8 +24,6 @@ provider settings in `config.yaml`).
 
 ## Installation
 
-### Install with pdm
-
 ```bash
 pdm install
 ```
@@ -33,15 +31,6 @@ pdm install
 This installs all dependencies (deepeval, openai, pydantic, chromadb,
 langchain, pypdf, docx2txt, ...) plus the `dev` group (black, ruff) into a
 local `.venv`.
-
-### Install with uv
-
-```bash
-uv sync
-```
-
-This installs all dependencies (deepeval, openai, pydantic, chromadb,
-langchain, pypdf, docx2txt, ...) into a local `.venv`.
 
 ## Documents
 
@@ -57,14 +46,14 @@ one source document that is chunked into contexts.
 Generate the dataset:
 
 ```bash
-uv run python dataset_generator.py
+pdm run python dataset_generator.py
 ```
 
 Evaluate a generated dataset (checks each `expected_output` is grounded in its
 `context`):
 
 ```bash
-uv run python eval_synthetic_dataset.py
+pdm run python eval_synthetic_dataset.py
 ```
 
 ### Dataset generation: step by step
@@ -123,8 +112,8 @@ By default it evaluates the **most recent** `synthetic_qa_*.json` file in
 Example with a local Ollama server:
 
 ```bash
-uv run python dataset_generator.py --llm-provider ollama --embedding-provider ollama
-uv run python eval_synthetic_dataset.py --llm-provider ollama --threshold 0.9
+pdm run python dataset_generator.py --llm-provider ollama --embedding-provider ollama
+pdm run python eval_synthetic_dataset.py --llm-provider ollama --threshold 0.9
 ```
 
 ## Handling the rate limit
