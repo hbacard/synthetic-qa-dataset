@@ -47,7 +47,7 @@ def list_document_paths(docs_dir: Path) -> list[Path]:
     paths = [p for p in docs_dir.iterdir() if p.is_file()]
     if not paths:
         raise FileNotFoundError(
-            f"No documents found in {docs_dir} " "(.md, .txt, .pdf, .docx, ... files)"
+            f"No documents found in {docs_dir} (.md, .txt, .pdf, .docx, ... files)"
         )
     return sorted(paths)
 

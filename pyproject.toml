@@ -36,9 +36,12 @@ addopts = "-q"
 [tool.coverage.run]
 source = ["synthetic_qa_dataset"]
 
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
 [dependency-groups]
 dev = [
-    "black[jupyter]>=26.10.0",
     "ruff>=0.16.10",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",

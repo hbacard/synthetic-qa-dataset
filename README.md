@@ -186,7 +186,7 @@ from providers import CustomOpenAI, CustomEmbeddingModel
 llm_cfg = get_provider(get_llm_provider_name())
 embedding_cfg = get_provider(get_embedding_provider_name())
 
-llm = CustomOpenAI.from_provider(llm_cfg)          # chat / critic model
+llm = CustomOpenAI.from_provider(llm_cfg)  # chat / critic model
 embedder = CustomEmbeddingModel.from_provider(embedding_cfg)  # embedding model
 ```
 

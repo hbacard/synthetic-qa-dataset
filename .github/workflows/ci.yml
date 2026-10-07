@@ -25,6 +25,9 @@ jobs:
       - name: Lint
         run: pdm run ruff check .
 
+      - name: Check formatting
+        run: pdm run ruff format --check .
+
       - name: Run tests
         run: pdm run pytest --cov
 
