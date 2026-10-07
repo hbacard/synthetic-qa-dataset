@@ -46,14 +46,21 @@ one source document that is chunked into contexts.
 Generate the dataset:
 
 ```bash
-pdm run python dataset_generator.py
+pdm run synthetic-qa-generate
 ```
 
 Evaluate a generated dataset (checks each `expected_output` is grounded in its
 `context`):
 
 ```bash
-pdm run python eval_synthetic_dataset.py
+pdm run synthetic-qa-evaluate
+```
+
+If the console scripts are unavailable, fall back to the module form:
+
+```bash
+pdm run python -m synthetic_qa_dataset.dataset_generator
+pdm run python -m synthetic_qa_dataset.eval_synthetic_dataset
 ```
 
 ### Dataset generation: step by step
@@ -90,7 +97,7 @@ By default it evaluates the **most recent** `synthetic_qa_*.json` file in
 
 ### CLI options
 
-`dataset_generator.py`:
+`synthetic-qa-generate` (aka `python -m synthetic_qa_dataset.dataset_generator`):
 
 | Option                | Default                      | Purpose                                    |
 | --------------------- | ---------------------------- | ------------------------------------------ |
@@ -100,7 +107,7 @@ By default it evaluates the **most recent** `synthetic_qa_*.json` file in
 | `--output-dir`        | `./datasets`                 | Where to save the generated dataset.       |
 | `--max-concurrent`    | `1`                          | Concurrent Synthesizer requests (serial).  |
 
-`eval_synthetic_dataset.py`:
+`synthetic-qa-evaluate` (aka `python -m synthetic_qa_dataset.eval_synthetic_dataset`):
 
 | Option         | Default                     | Purpose                                  |
 | -------------- | --------------------------- | ---------------------------------------- |
@@ -112,8 +119,8 @@ By default it evaluates the **most recent** `synthetic_qa_*.json` file in
 Example with a local Ollama server:
 
 ```bash
-pdm run python dataset_generator.py --llm-provider ollama --embedding-provider ollama
-pdm run python eval_synthetic_dataset.py --llm-provider ollama --threshold 0.9
+pdm run synthetic-qa-generate --llm-provider ollama --embedding-provider ollama
+pdm run synthetic-qa-evaluate --llm-provider ollama --threshold 0.9
 ```
 
 ## Handling the rate limit
@@ -195,11 +202,15 @@ endpoints, ...) works with the same code by adding another entry to
 
 ```
 config.yaml       # per-provider settings + llm_provider / embedding_provider
-config.py         # loads config.yaml, exposes get_provider + provider selectors
-providers.py      # CustomOpenAI + CustomEmbeddingModel (provider-agnostic)
-paths.py          # shared project paths (docs/, datasets/, evals/)
-dataset_generator.py      # generate synthetic QA dataset + auto-save
-eval_synthetic_dataset.py # validate dataset for hallucination
+src/
+  synthetic_qa_dataset/  # the package
+    config.py            # loads config.yaml, exposes get_provider + selectors
+    providers.py         # CustomOpenAI + CustomEmbeddingModel (provider-agnostic)
+    paths.py             # shared project paths (docs/, datasets/, evals/)
+    dataset_generator.py # generate synthetic QA dataset + auto-save
+    eval_synthetic_dataset.py # validate dataset for hallucination
+examples/
+  test_hallucination_metric.py # standalone metric demo script
 docs/             # input documentation files
 datasets/         # generated synthetic QA datasets (git-ignored, timestamped files)
 evals/            # evaluation results (git-ignored)

@@ -15,9 +15,9 @@ from pathlib import Path
 from deepeval.metrics import HallucinationMetric
 from deepeval.test_case import LLMTestCase
 
-from config import get_llm_provider_name, get_provider
-from paths import DATASETS_DIR, EVALS_DIR
-from providers import CustomOpenAI
+from .config import get_llm_provider_name, get_provider
+from .paths import DATASETS_DIR, EVALS_DIR
+from .providers import CustomOpenAI
 
 LOGGER = logging.getLogger(__name__)
 

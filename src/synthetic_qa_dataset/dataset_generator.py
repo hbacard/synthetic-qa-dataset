@@ -17,9 +17,9 @@ from deepeval.dataset.golden import Golden
 from deepeval.synthesizer import Synthesizer
 from deepeval.synthesizer.config import ContextConstructionConfig
 
-from config import get_embedding_provider_name, get_llm_provider_name, get_provider
-from paths import DATASETS_DIR, DOCS_DIR
-from providers import CustomEmbeddingModel, CustomOpenAI
+from .config import get_embedding_provider_name, get_llm_provider_name, get_provider
+from .paths import DATASETS_DIR, DOCS_DIR
+from .providers import CustomEmbeddingModel, CustomOpenAI
 
 LOGGER = logging.getLogger(__name__)
 

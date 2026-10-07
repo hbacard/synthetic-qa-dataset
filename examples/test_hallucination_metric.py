@@ -2,8 +2,8 @@ from deepeval.metrics import HallucinationMetric
 from deepeval.test_case import LLMTestCase
 from dotenv import load_dotenv
 
-from config import get_llm_provider_name, get_provider
-from providers import CustomOpenAI
+from synthetic_qa_dataset.config import get_llm_provider_name, get_provider
+from synthetic_qa_dataset.providers import CustomOpenAI
 
 load_dotenv()
 

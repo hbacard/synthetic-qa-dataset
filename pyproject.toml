@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "synthetic-qa-dataset"
 version = "0.1.0"
@@ -17,18 +21,12 @@ dependencies = [
     "tiktoken",
 ]
 
-[tool.setuptools]
-py-modules = [
-    "config",
-    "dataset_generator",
-    "eval_synthetic_dataset",
-    "paths",
-    "providers",
-    "test_hallucination_metric",
-]
+[project.scripts]
+synthetic-qa-generate = "synthetic_qa_dataset.dataset_generator:main"
+synthetic-qa-evaluate = "synthetic_qa_dataset.eval_synthetic_dataset:main"
 
 [tool.setuptools.packages.find]
-include = []
+where = ["src"]
 exclude = ["evals", "datasets", "markdowns_support"]
 
 [dependency-groups]
