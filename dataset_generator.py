@@ -10,7 +10,7 @@ import argparse
 import json
 import logging
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from deepeval.dataset.golden import Golden
@@ -43,14 +43,11 @@ def list_document_paths(docs_dir: Path) -> list[Path]:
         If ``docs_dir`` does not exist or contains no files.
     """
     if not docs_dir.is_dir():
-        raise FileNotFoundError(
-            f"Documents directory not found: {docs_dir}"
-        )
+        raise FileNotFoundError(f"Documents directory not found: {docs_dir}")
     paths = [p for p in docs_dir.iterdir() if p.is_file()]
     if not paths:
         raise FileNotFoundError(
-            f"No documents found in {docs_dir} "
-            "(.md, .txt, .pdf, .docx, ... files)"
+            f"No documents found in {docs_dir} " "(.md, .txt, .pdf, .docx, ... files)"
         )
     return sorted(paths)
 
@@ -94,7 +91,7 @@ def save_dataset(goldens: list[Golden], output_dir: Path) -> Path:
         Path of the written dataset file.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     file_path = output_dir / f"synthetic_qa_{timestamp}.json"
     with open(file_path, "w", encoding="utf-8") as f_out:
         json.dump(
@@ -163,7 +160,7 @@ def main() -> None:
                 critic_model=custom_model,
             ),
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - catch-all for CLI entry point
         LOGGER.error("Failed to generate the dataset: %s", exc)
         sys.exit(1)
 

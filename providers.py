@@ -26,15 +26,13 @@ def _is_retryable(exc: Exception) -> bool:
     status = getattr(exc, "status_code", None)
     if status is None:
         status = getattr(getattr(exc, "response", None), "status_code", None)
-    if status == RATE_LIMIT_STATUS:
-        return True
-    if isinstance(exc, (ConnectionError, TimeoutError)):
-        return True
-    return False
+    return status == RATE_LIMIT_STATUS or isinstance(
+        exc, (ConnectionError, TimeoutError)
+    )
 
 
 def _retry_delay(attempt: int, min_sleep: float, max_delay: float) -> float:
-    return min(min_sleep * (2 ** attempt), max_delay)
+    return min(min_sleep * (2**attempt), max_delay)
 
 
 def _sleep_with_backoff(attempt: int, min_sleep: float, max_delay: float):
@@ -45,7 +43,14 @@ async def _async_sleep_with_backoff(attempt: int, min_sleep: float, max_delay: f
     await asyncio.sleep(_retry_delay(attempt, min_sleep, max_delay))
 
 
-def _call_with_retry(call, *args, max_retries: int = DEFAULT_MAX_RETRIES, min_sleep: float = DEFAULT_MIN_SLEEP, max_delay: float = DEFAULT_MAX_DELAY, **kwargs):
+def _call_with_retry(
+    call,
+    *args,
+    max_retries: int = DEFAULT_MAX_RETRIES,
+    min_sleep: float = DEFAULT_MIN_SLEEP,
+    max_delay: float = DEFAULT_MAX_DELAY,
+    **kwargs,
+):
     last_exc = None
     for attempt in range(max_retries + 1):
         try:
@@ -62,7 +67,14 @@ def _call_with_retry(call, *args, max_retries: int = DEFAULT_MAX_RETRIES, min_sl
     raise last_exc
 
 
-async def _acall_with_retry(call, *args, max_retries: int = DEFAULT_MAX_RETRIES, min_sleep: float = DEFAULT_MIN_SLEEP, max_delay: float = DEFAULT_MAX_DELAY, **kwargs):
+async def _acall_with_retry(
+    call,
+    *args,
+    max_retries: int = DEFAULT_MAX_RETRIES,
+    min_sleep: float = DEFAULT_MIN_SLEEP,
+    max_delay: float = DEFAULT_MAX_DELAY,
+    **kwargs,
+):
     last_exc = None
     for attempt in range(max_retries + 1):
         try:
@@ -80,11 +92,11 @@ async def _acall_with_retry(call, *args, max_retries: int = DEFAULT_MAX_RETRIES,
 
 
 def init_client(base_url, api_key_env: str):
-    return OpenAI(base_url=base_url, api_key=os.environ.get(api_key_env, 'ollama'))
+    return OpenAI(base_url=base_url, api_key=os.environ.get(api_key_env, "ollama"))
 
 
 def init_async_client(base_url, api_key_env: str):
-    return AsyncOpenAI(base_url=base_url, api_key=os.environ.get(api_key_env, 'ollama'))
+    return AsyncOpenAI(base_url=base_url, api_key=os.environ.get(api_key_env, "ollama"))
 
 
 def _deref(schema_obj: dict, json_schema: dict) -> dict:
@@ -115,9 +127,7 @@ def _type_example(prop: dict, json_schema: dict):
     if ptype == "array":
         items = _deref(prop.get("items", {}), json_schema)
         items = _pick_type(items)
-        return (
-            [_object_example(items, json_schema)] if "properties" in items else [""]
-        )
+        return [_object_example(items, json_schema)] if "properties" in items else [""]
     if ptype == "boolean":
         return True
     if ptype in ("integer", "number"):
@@ -146,7 +156,7 @@ def _schema_hint(schema: BaseModel) -> str:
 
 def _build_messages(prompt: str, schema: BaseModel | None):
     if schema is None:
-        return [{'role': 'user', 'content': prompt}], {}
+        return [{"role": "user", "content": prompt}], {}
     hint = _schema_hint(schema)
     structured_prompt = (
         f"{prompt}\n\n"
@@ -154,7 +164,7 @@ def _build_messages(prompt: str, schema: BaseModel | None):
         f"exactly this structure, filling in the values:\n{hint}"
     )
     return (
-        [{'role': 'user', 'content': structured_prompt}],
+        [{"role": "user", "content": structured_prompt}],
         {"response_format": {"type": "json_object"}},
     )
 
@@ -206,7 +216,8 @@ class CustomOpenAI(DeepEvalBaseLLM):
             max_retries=self.max_retries,
             min_sleep=self.min_sleep,
             max_delay=self.max_delay,
-            **kwargs)
+            **kwargs,
+        )
 
         content = answer.choices[0].message.content
         if schema:
@@ -223,7 +234,8 @@ class CustomOpenAI(DeepEvalBaseLLM):
             max_retries=self.max_retries,
             min_sleep=self.min_sleep,
             max_delay=self.max_delay,
-            **kwargs)
+            **kwargs,
+        )
 
         content = answer.choices[0].message.content
         if schema:
@@ -270,26 +282,46 @@ class CustomEmbeddingModel(DeepEvalBaseEmbeddingModel):
 
     def embed_text(self, text: str) -> list[float]:
         response = _call_with_retry(
-            self._client.embeddings.create, input=text, model=self.model,
-            max_retries=self.max_retries, min_sleep=self.min_sleep, max_delay=self.max_delay)
+            self._client.embeddings.create,
+            input=text,
+            model=self.model,
+            max_retries=self.max_retries,
+            min_sleep=self.min_sleep,
+            max_delay=self.max_delay,
+        )
         return response.data[0].embedding
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         response = _call_with_retry(
-            self._client.embeddings.create, input=texts, model=self.model,
-            max_retries=self.max_retries, min_sleep=self.min_sleep, max_delay=self.max_delay)
+            self._client.embeddings.create,
+            input=texts,
+            model=self.model,
+            max_retries=self.max_retries,
+            min_sleep=self.min_sleep,
+            max_delay=self.max_delay,
+        )
         return [item.embedding for item in response.data]
 
     async def a_embed_text(self, text: str) -> list[float]:
         response = await _acall_with_retry(
-            self._a_client.embeddings.create, input=text, model=self.model,
-            max_retries=self.max_retries, min_sleep=self.min_sleep, max_delay=self.max_delay)
+            self._a_client.embeddings.create,
+            input=text,
+            model=self.model,
+            max_retries=self.max_retries,
+            min_sleep=self.min_sleep,
+            max_delay=self.max_delay,
+        )
         return response.data[0].embedding
 
     async def a_embed_texts(self, texts: list[str]) -> list[list[float]]:
         response = await _acall_with_retry(
-            self._a_client.embeddings.create, input=texts, model=self.model,
-            max_retries=self.max_retries, min_sleep=self.min_sleep, max_delay=self.max_delay)
+            self._a_client.embeddings.create,
+            input=texts,
+            model=self.model,
+            max_retries=self.max_retries,
+            min_sleep=self.min_sleep,
+            max_delay=self.max_delay,
+        )
         return [item.embedding for item in response.data]
 
     def get_model_name(self):
@@ -300,6 +332,7 @@ if __name__ == "__main__":
     import asyncio
 
     from config import get_provider
+
     cfg = get_provider("albert")
     llm = CustomOpenAI.from_provider(cfg)
     res = asyncio.run(llm.a_generate(prompt="What's the capital of Canada"))

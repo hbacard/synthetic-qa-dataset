@@ -149,7 +149,9 @@ def get_provider(name: str) -> ProviderConfig:
     providers = _load_providers()
     if name not in providers:
         available = ", ".join(providers) or "(none configured)"
-        raise KeyError(f"Provider '{name}' not found in {CONFIG_PATH}. Available: {available}")
+        raise KeyError(
+            f"Provider '{name}' not found in {CONFIG_PATH}. Available: {available}"
+        )
     raw = providers[name]
     return ProviderConfig(
         name=name,

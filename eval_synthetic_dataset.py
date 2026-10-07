@@ -65,7 +65,7 @@ def load_data(dataset_path: Path) -> list[dict]:
     ------
     FileNotFoundError
         If ``dataset_path`` does not exist.
-    ValueError
+    TypeError
         If the file content is not a JSON list.
     """
     if not dataset_path.is_file():
@@ -73,9 +73,7 @@ def load_data(dataset_path: Path) -> list[dict]:
     with open(dataset_path, "r", encoding="utf-8") as f_in:
         data = json.load(f_in)
     if not isinstance(data, list):
-        raise ValueError(
-            f"Invalid format for {dataset_path}: a list was expected"
-        )
+        raise TypeError(f"Invalid format for {dataset_path}: a list was expected")
     return data
 
 
@@ -132,7 +130,7 @@ def evaluate_dataset(
         test_case = build_test_case(record)
         try:
             halu_metric.measure(test_case)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - tolerate per-item failures
             failures += 1
             LOGGER.error(
                 "Failed to evaluate item %d/%d: %s",
@@ -227,7 +225,7 @@ def main() -> None:
             llm_provider=args.llm_provider,
             threshold=args.threshold,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - catch-all for CLI entry point
         LOGGER.error("Evaluation failed: %s", exc)
         sys.exit(1)
 

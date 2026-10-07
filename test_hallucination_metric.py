@@ -8,7 +8,6 @@ from providers import CustomOpenAI
 load_dotenv()
 
 
-
 context = [
     "---\ntitle: \"Configuration client X2GO:\"\ndate: 2022-09-26\n---\n\nLa configuration du client X2go ne fonctionne qu'avec une session de type MATE.\n\nLa configuration d'un serveur mandataire est nécessaire  pour une connexion depuis l'extérieur du laboratoire vers un serveur X2GO qui n'est pas directement autorisé en ssh.\n\nExemple de configuration:\n\n![](images/X2GO.png)\n"
 ]
@@ -64,13 +63,12 @@ test_case = LLMTestCase(
     input="How to set X2GO client for MATE sessions and required external proxy configuration?",
     actual_output=actual_output,
     context=context,
-
 )
 
 eval_llm = CustomOpenAI.from_provider(get_provider(get_llm_provider_name()))
 halu_metric = HallucinationMetric(threshold=0.5, model=eval_llm)
 
-## 
+##
 
 halu_metric.measure(test_case)
 print("Hallucination Metric:")
