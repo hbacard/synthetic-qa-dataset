@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "eval-rag"
+abstract: "Generate synthetic QA goldens for RAG evaluation from a set of documentation files, then validate that those goldens are hallucination-free."
+version: "0.1.0"
+date-released: "2026-10-07"
+license: "MIT"
+keywords:
+  - "RAG evaluation"
+  - "synthetic data generation"
+  - "hallucination detection"
+  - "deepeval"
+  - "LLM"
+authors:
+  - family-names: "Bacard"
+    given-names: "Hugo"
+    email: "hugo.bacard@ijclab.in2p3.fr"
+    orcid: "https://orcid.org/0000-0001-9216-494X"

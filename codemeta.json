@@ -1,0 +1,36 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "name": "eval-rag",
+  "description": "Generate synthetic QA goldens for RAG evaluation from a set of documentation files, then validate that those goldens are hallucination-free.",
+  "version": "0.1.0",
+  "license": "https://spdx.org/licenses/MIT",
+  "codeRepository": "https://github.com/hbacard/eval-rag",
+  "programmingLanguage": {
+    "@type": "ComputerLanguage",
+    "name": "Python",
+    "url": "https://www.python.org/"
+  },
+  "keywords": [
+    "RAG evaluation",
+    "synthetic data generation",
+    "hallucination detection",
+    "deepeval",
+    "LLM"
+  ],
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Hugo",
+      "familyName": "Bacard",
+      "email": "hugo.bacard@ijclab.in2p3.fr",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "IJCLab"
+      },
+      "@id": "https://orcid.org/0000-0001-9216-494X"
+    }
+  ],
+  "dateCreated": "2026-09-29",
+  "datePublished": "2026-10-07"
+}
