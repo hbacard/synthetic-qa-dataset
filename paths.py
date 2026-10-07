@@ -1,4 +1,4 @@
-"""Chemins des répertoires du projet (indépendants du CWD)."""
+"""Project directory paths (independent of the CWD)."""
 
 from pathlib import Path
 

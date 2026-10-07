@@ -1,8 +1,9 @@
-"""Génère un jeu de données synthétique (goldens) pour l'évaluation RAG.
+"""
+Generates a synthetic dataset (goldens) for RAG evaluation.
 
-Pipeline : charge la configuration d'un provider, construit le modèle LLM et
-l'embedder, génère des questions/réponses synthétiques à partir des documents
-de ``docs/`` puis sauvegarde le résultat dans ``datasets/``.
+Pipeline: loads a provider's configuration, builds the LLM model and the
+embedder, creates synthetic question/answer pairs from the documents in
+``docs/``, then saves the result in ``datasets/``.
 """
 
 import argparse
@@ -23,22 +24,22 @@ LOGGER = logging.getLogger(__name__)
 
 
 def list_document_paths(docs_dir: Path) -> list[Path]:
-    """Retourne les fichiers de ``docs_dir`` triés par nom."""
+    """Return the files in ``docs_dir`` sorted by name."""
     if not docs_dir.is_dir():
         raise FileNotFoundError(
-            f"Répertoire de documents introuvable : {docs_dir}"
+            f"Documents directory not found: {docs_dir}"
         )
     paths = [p for p in docs_dir.iterdir() if p.is_file()]
     if not paths:
         raise FileNotFoundError(
-            f"Aucun document trouvé dans {docs_dir} "
-            "(fichiers .md, .txt, .pdf, .docx, ...)"
+            f"No documents found in {docs_dir} "
+            "(.md, .txt, .pdf, .docx, ... files)"
         )
     return sorted(paths)
 
 
 def golden_to_dict(golden: Golden) -> dict:
-    """Convertit un objet ``Golden`` deepeval en dictionnaire sérialisable."""
+    """Convert a deepeval ``Golden`` object into a serializable dictionary."""
     return {
         "input": golden.input,
         "actual_output": getattr(golden, "actual_output", None),
@@ -50,7 +51,7 @@ def golden_to_dict(golden: Golden) -> dict:
 
 
 def save_goldens(goldens: list[Golden], output_dir: Path) -> Path:
-    """Sauvegarde les goldens dans un fichier horodaté et renvoie son chemin."""
+    """Save the goldens to a timestamped file and return its path."""
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     file_path = output_dir / f"goldens_{timestamp}.json"
@@ -61,36 +62,36 @@ def save_goldens(goldens: list[Golden], output_dir: Path) -> Path:
             ensure_ascii=False,
             indent=2,
         )
-    LOGGER.info("Sauvegarde de %d goldens dans %s", len(goldens), file_path)
+    LOGGER.info("Saved %d goldens to %s", len(goldens), file_path)
     return file_path
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Génère des goldens synthétiques depuis docs/."
+        description="Generate synthetic goldens from docs/."
     )
     parser.add_argument(
         "--provider",
         default="albert",
-        help="Nom du provider dans config.yaml (défaut : albert).",
+        help="Provider name in config.yaml (default: albert).",
     )
     parser.add_argument(
         "--docs-dir",
         type=Path,
         default=DOCS_DIR,
-        help="Répertoire des documents sources (défaut : ./docs).",
+        help="Directory of source documents (default: ./docs).",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=DATASETS_DIR,
-        help="Répertoire de sortie des goldens (défaut : ./datasets).",
+        help="Output directory for the goldens (default: ./datasets).",
     )
     parser.add_argument(
         "--max-concurrent",
         type=int,
         default=1,
-        help="Requêtes simultanées du Synthesizer (défaut : 1).",
+        help="Number of concurrent Synthesizer requests (default: 1).",
     )
     args = parser.parse_args()
 
@@ -103,7 +104,7 @@ def main() -> None:
     synthesizer = Synthesizer(model=custom_model, max_concurrent=args.max_concurrent)
 
     document_paths = [str(p) for p in list_document_paths(args.docs_dir)]
-    LOGGER.info("Génération de goldens depuis %d document(s)...", len(document_paths))
+    LOGGER.info("Generating goldens from %d document(s)...", len(document_paths))
 
     try:
         goldens = synthesizer.generate_goldens_from_docs(
@@ -115,7 +116,7 @@ def main() -> None:
             ),
         )
     except Exception as exc:
-        LOGGER.error("Échec de la génération des goldens : %s", exc)
+        LOGGER.error("Failed to generate goldens: %s", exc)
         sys.exit(1)
 
     save_goldens(goldens, args.output_dir)
