@@ -4,6 +4,8 @@
   "name": "synthetic-qa-dataset",
   "description": "Generate a synthetic QA dataset from a set of documentation files, then validate that the dataset is hallucination-free.",
   "version": "0.1.0",
+  "softwareVersion": "0.1.0",
+  "developmentStatus": "active",
   "license": "https://spdx.org/licenses/MIT",
   "codeRepository": "https://github.com/hbacard/synthetic-qa-dataset",
   "programmingLanguage": {
