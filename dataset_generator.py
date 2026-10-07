@@ -25,7 +25,23 @@ LOGGER = logging.getLogger(__name__)
 
 
 def list_document_paths(docs_dir: Path) -> list[Path]:
-    """Return the files in ``docs_dir`` sorted by name."""
+    """Return the files in ``docs_dir`` sorted by name.
+
+    Parameters
+    ----------
+    docs_dir:
+        Directory whose files are to be listed.
+
+    Returns
+    -------
+    list[Path]
+        The files in ``docs_dir`` sorted by name.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``docs_dir`` does not exist or contains no files.
+    """
     if not docs_dir.is_dir():
         raise FileNotFoundError(
             f"Documents directory not found: {docs_dir}"
@@ -40,7 +56,18 @@ def list_document_paths(docs_dir: Path) -> list[Path]:
 
 
 def record_to_dict(golden: Golden) -> dict:
-    """Convert a deepeval ``Golden`` object into a serializable dictionary."""
+    """Convert a deepeval ``Golden`` object into a serializable dictionary.
+
+    Parameters
+    ----------
+    golden:
+        The deepeval golden record to convert.
+
+    Returns
+    -------
+    dict
+        Plain dictionary with the golden's fields ready for JSON serialization.
+    """
     return {
         "input": golden.input,
         "actual_output": getattr(golden, "actual_output", None),
@@ -52,7 +79,20 @@ def record_to_dict(golden: Golden) -> dict:
 
 
 def save_dataset(goldens: list[Golden], output_dir: Path) -> Path:
-    """Save the QA records to a timestamped file and return its path."""
+    """Save the QA records to a timestamped file and return its path.
+
+    Parameters
+    ----------
+    goldens:
+        The generated QA records to save.
+    output_dir:
+        Directory in which the dataset file is created.
+
+    Returns
+    -------
+    Path
+        Path of the written dataset file.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     file_path = output_dir / f"synthetic_qa_{timestamp}.json"
@@ -68,6 +108,7 @@ def save_dataset(goldens: list[Golden], output_dir: Path) -> Path:
 
 
 def main() -> None:
+    """Generate a synthetic QA dataset from ``docs/`` via the CLI."""
     parser = argparse.ArgumentParser(
         description="Generate a synthetic QA dataset from docs/."
     )

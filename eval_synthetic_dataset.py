@@ -23,7 +23,23 @@ LOGGER = logging.getLogger(__name__)
 
 
 def latest_dataset(datasets_dir: Path) -> Path:
-    """Return the most recent ``synthetic_qa_*.json`` file in the directory."""
+    """Return the most recent ``synthetic_qa_*.json`` file in the directory.
+
+    Parameters
+    ----------
+    datasets_dir:
+        Directory in which to look for dataset files.
+
+    Returns
+    -------
+    Path
+        Path of the most recent dataset file (by name order).
+
+    Raises
+    ------
+    FileNotFoundError
+        If no ``synthetic_qa_*.json`` file is found.
+    """
     candidates = sorted(datasets_dir.glob("synthetic_qa_*.json"))
     if not candidates:
         raise FileNotFoundError(
@@ -33,7 +49,25 @@ def latest_dataset(datasets_dir: Path) -> Path:
 
 
 def load_data(dataset_path: Path) -> list[dict]:
-    """Load a JSON dataset and check that it is a list."""
+    """Load a JSON dataset and check that it is a list.
+
+    Parameters
+    ----------
+    dataset_path:
+        Path of the JSON dataset file.
+
+    Returns
+    -------
+    list[dict]
+        The dataset records.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``dataset_path`` does not exist.
+    ValueError
+        If the file content is not a JSON list.
+    """
     if not dataset_path.is_file():
         raise FileNotFoundError(f"Dataset not found: {dataset_path}")
     with open(dataset_path, "r", encoding="utf-8") as f_in:
@@ -50,6 +84,16 @@ def build_test_case(record: dict) -> LLMTestCase:
 
     ``actual_output`` takes the value of ``expected_output`` to validate that
     the generated record is faithful to its context (no hallucination).
+
+    Parameters
+    ----------
+    record:
+        A single dataset record.
+
+    Returns
+    -------
+    LLMTestCase
+        The test case to feed to the hallucination metric.
     """
     return LLMTestCase(
         input=record.get("input", ""),
@@ -61,7 +105,22 @@ def build_test_case(record: dict) -> LLMTestCase:
 def evaluate_dataset(
     dataset_name: str, llm_provider: str, threshold: float
 ) -> list[dict]:
-    """Measure the hallucination of each record and return the results."""
+    """Measure the hallucination of each record and return the results.
+
+    Parameters
+    ----------
+    dataset_name:
+        File name of the dataset inside ``DATASETS_DIR``.
+    llm_provider:
+        Name of the LLM provider used as the evaluation model.
+    threshold:
+        Hallucination score threshold of the metric.
+
+    Returns
+    -------
+    list[dict]
+        Evaluation results, one dict per record.
+    """
     eval_llm = CustomOpenAI.from_provider(get_provider(llm_provider))
     halu_metric = HallucinationMetric(threshold=threshold, model=eval_llm)
 
@@ -104,7 +163,22 @@ def evaluate_dataset(
 
 
 def save_results(results: list[dict], dataset_name: str, output_dir: Path) -> Path:
-    """Save the evaluation results and return the file path."""
+    """Save the evaluation results and return the file path.
+
+    Parameters
+    ----------
+    results:
+        Evaluation results to write.
+    dataset_name:
+        Name of the evaluated dataset, used in the output file name.
+    output_dir:
+        Directory in which the results file is created.
+
+    Returns
+    -------
+    Path
+        Path of the written results file.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / f"eval_data_{dataset_name}.json"
     with open(output_path, "w", encoding="utf-8") as f_out:
@@ -114,6 +188,7 @@ def save_results(results: list[dict], dataset_name: str, output_dir: Path) -> Pa
 
 
 def main() -> None:
+    """Evaluate the hallucination of a synthetic dataset via the CLI."""
     parser = argparse.ArgumentParser(
         description="Evaluate the hallucination of a synthetic dataset's records."
     )

@@ -17,6 +17,30 @@ DEFAULT_PROVIDER = "albert"
 
 @dataclass
 class ProviderConfig:
+    """Configuration of a single LLM or embedding provider.
+
+    Attributes
+    ----------
+    name:
+        Unique provider name used as the key in ``config.yaml``.
+    model:
+        Model identifier passed to the provider API.
+    base_url:
+        Base URL of the provider API.
+    api_env:
+        Name of the environment variable holding the API key.
+    embedding:
+        Embedding model name used by this provider.
+    temperature:
+        Sampling temperature for LLM calls.
+    max_retries:
+        Maximum number of retry attempts on retryable errors.
+    min_sleep:
+        Base delay (seconds) for exponential backoff.
+    max_delay:
+        Upper bound (seconds) for the backoff delay.
+    """
+
     name: str
     model: str
     base_url: str
@@ -29,6 +53,14 @@ class ProviderConfig:
 
 
 def _load_config() -> dict:
+    """Load the full YAML configuration from ``config.yaml``.
+
+    Returns
+    -------
+    dict
+        Parsed configuration contents, or an empty dict if the file is
+        missing or empty.
+    """
     if not CONFIG_PATH.exists():
         return {}
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -36,6 +68,13 @@ def _load_config() -> dict:
 
 
 def _load_providers() -> dict[str, dict]:
+    """Return the ``providers`` mapping from the configuration.
+
+    Returns
+    -------
+    dict[str, dict]
+        Mapping of provider name to its raw configuration, empty if none.
+    """
     return _load_config().get("providers", {}) or {}
 
 
@@ -45,6 +84,16 @@ def _provider_name(key: str) -> str:
     Falls back to a single provider (``DEFAULT_PROVIDER`` if configured, else
     the first configured one) so legacy configs without the top-level keys keep
     working.
+
+    Parameters
+    ----------
+    key:
+        Top-level configuration key, e.g. ``"llm_provider"``.
+
+    Returns
+    -------
+    str
+        Name of the provider to use for ``key``.
     """
     name = _load_config().get(key)
     if name:
@@ -58,16 +107,45 @@ def _provider_name(key: str) -> str:
 
 
 def get_llm_provider_name() -> str:
-    """Return the name of the configured LLM provider."""
+    """Return the name of the configured LLM provider.
+
+    Returns
+    -------
+    str
+        Name of the LLM provider to use.
+    """
     return _provider_name("llm_provider")
 
 
 def get_embedding_provider_name() -> str:
-    """Return the name of the configured embedding provider."""
+    """Return the name of the configured embedding provider.
+
+    Returns
+    -------
+    str
+        Name of the embedding provider to use.
+    """
     return _provider_name("embedding_provider")
 
 
 def get_provider(name: str) -> ProviderConfig:
+    """Build a ``ProviderConfig`` for the given provider name.
+
+    Parameters
+    ----------
+    name:
+        Provider name as configured under ``providers`` in ``config.yaml``.
+
+    Returns
+    -------
+    ProviderConfig
+        Populated configuration for the requested provider.
+
+    Raises
+    ------
+    KeyError
+        If ``name`` is not a configured provider.
+    """
     providers = _load_providers()
     if name not in providers:
         available = ", ".join(providers) or "(none configured)"
@@ -87,6 +165,13 @@ def get_provider(name: str) -> ProviderConfig:
 
 
 def list_providers() -> list[str]:
+    """Return the names of all configured providers.
+
+    Returns
+    -------
+    list[str]
+        Provider names as configured under ``providers``.
+    """
     return list(_load_providers().keys())
 
 
