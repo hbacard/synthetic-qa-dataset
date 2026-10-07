@@ -1,18 +1,28 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
-title: "synthetic-qa-dataset"
-abstract: "Generate a synthetic QA dataset from a set of documentation files, then validate that the dataset is hallucination-free."
-version: "0.1.0"
-date-released: "2026-10-07"
-license: "MIT"
-keywords:
-  - "RAG evaluation"
-  - "synthetic data generation"
-  - "hallucination detection"
-  - "deepeval"
-  - "LLM"
+title: synthetic-qa-dataset
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
 authors:
-  - family-names: "Bacard"
-    given-names: "Hugo"
-    email: "hugo.bacard@ijclab.in2p3.fr"
-    orcid: "https://orcid.org/0000-0001-9216-494X"
+  - given-names: Hugo
+    family-names: Bacard
+    email: hugo.bacard@ijclab.in2p3.fr
+    affiliation: IJCLab
+    orcid: 'https://orcid.org/0000-0001-9216-494X'
+abstract: >-
+  Generate a synthetic QA dataset from a set of
+  documentation files, then validate that the dataset is
+  hallucination-free.
+keywords:
+  - Synthetic data generation
+  - RAG evaluation
+  - DeepEval
+  - Hallucination detection
+  - LLM
+license: MIT
+version: 0.1.0
+date-released: '2026-10-07'
