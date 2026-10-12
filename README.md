@@ -18,7 +18,7 @@ provider settings in `config.yaml`).
 
 - Python 3.12 with `pdm` installed.
 - An API key for your provider in the environment. The env variable name is
-  set per provider in `config.yaml` (`api_env`). For Albert, e.g.:
+  set per provider in `config.yaml` (`api_env`).
 
   ```bash
   export PROVIDER_API_KEY="your-key-here"
@@ -130,9 +130,9 @@ pdm run synthetic-qa-evaluate --llm-provider ollama --threshold 0.9
 
 ## Handling the rate limit
 
-The Albert API allows about **10 requests/minute**. A large run (several
+A tested API allows about **10 requests/minute**. A large run (several
 documents × several contexts × several QA records each) easily exceeds this and
-Albert returns HTTP `429`.
+some providers return HTTP `429`.
 
 `providers.py` handles this automatically:
 
@@ -196,7 +196,7 @@ embedder = CustomEmbeddingModel.from_provider(embedding_cfg)  # embedding model
 ```
 
 If `llm_provider` / `embedding_provider` are missing, both fall back to a single
-provider (the first configured one, or `albert`) so legacy configs keep working.
+provider (the first configured one, or `ollama`) so legacy configs keep working.
 
 The constructors also accept each setting as an explicit argument, so any
 OpenAI-compatible provider (OpenAI, Ollama, vLLM, Azure OpenAI-compatible
