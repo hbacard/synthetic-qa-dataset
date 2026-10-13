@@ -1,0 +1,32 @@
+schema_version: "1.0.0"
+
+project:
+  name: synthetic-qa-dataset
+  content_type: software
+
+ai_usage:
+  used: true
+  level: moderate
+  summary: >-
+    opencode (AI coding assistant) with deepseek-v4-flash was used for scaffolding the project
+    skeleton, code completion and assisting refactoring.
+
+  tools:
+    - name: opencode
+      vendor: opencode
+      type: assistant
+      model: deepseek-v4-flash
+      hosting: [Albert API, IlaaS]
+     
+
+  scope:
+    code_generation: true
+    code_review: false
+    documentation: false
+    testing: false
+    infrastructure: true
+
+
+declaration:
+  date: "2026-10-12"
+  declared_by: Hugo Bacard

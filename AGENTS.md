@@ -41,4 +41,4 @@
 - Request Commit approval after each milestone.
 
 ## Code style
-- Add Numpy style docstring if necessary to function
+- Add Numpy style docstring if necessary to functions
