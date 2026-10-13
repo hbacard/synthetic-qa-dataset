@@ -724,7 +724,7 @@ if __name__ == "__main__":
 
     from .config import get_provider
     provider = "ollama"
-    cfg = get_provider("albert")
+    cfg = get_provider(name=provider)
     llm = CustomOpenAI.from_provider(cfg)
     res = asyncio.run(llm.a_generate(prompt="What's the capital of Canada"))
     print(res)
