@@ -7,7 +7,7 @@ name = "synthetic-qa-dataset"
 version = "0.1.0"
 description = "Generate and validate a synthetic QA dataset from documentation files."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "deepeval>=4.2.6",
     "openai>=3.20.0",
