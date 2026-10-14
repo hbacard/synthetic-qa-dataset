@@ -7,7 +7,9 @@ import pytest
 from deepeval.dataset.golden import Golden
 
 from synthetic_qa_dataset.dataset_generator import (
+    build_contexts,
     list_document_paths,
+    read_document_text,
     record_to_dict,
     save_dataset,
 )
@@ -39,12 +41,35 @@ def test_record_to_dict(tmp_path):
         input="Question?",
         expected_output="Expected answer.",
         context=["ctx-a", "ctx-b"],
+        source_file="corpus/doc.md",
+        additional_metadata={"context_source_files": ["corpus/doc.md"]},
     )
     record = record_to_dict(golden)
     assert record["input"] == "Question?"
     assert record["expected_output"] == "Expected answer."
     assert record["context"] == ["ctx-a", "ctx-b"]
     assert record["actual_output"] is None
+    assert record["source_file"] == "corpus/doc.md"
+    assert record["additional_metadata"]["context_source_files"] == ["corpus/doc.md"]
+
+
+def test_read_document_text_txt(tmp_path):
+    """``read_document_text`` must read plain text files."""
+    path = tmp_path / "notes.txt"
+    path.write_text("Hello, world!\nSecond line.", encoding="utf-8")
+    assert read_document_text(path) == "Hello, world!\nSecond line."
+
+
+def test_build_contexts_keeps_trace(tmp_path):
+    """``build_contexts`` must produce one single-chunk context per chunk."""
+    doc = tmp_path / "doc.md"
+    doc.write_text("word " * 2000, encoding="utf-8")
+    contexts, source_files = build_contexts([doc], chunk_size=500, chunk_overlap=0)
+
+    assert len(contexts) > 1
+    assert all(len(context) == 1 for context in contexts)
+    assert len(source_files) == len(contexts)
+    assert all(source == str(doc) for source in source_files)
 
 
 def test_save_dataset_writes_timestamped_file(tmp_path):

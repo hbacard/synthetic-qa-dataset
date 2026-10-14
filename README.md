@@ -9,9 +9,11 @@ Build a synthetic question-answering dataset from a collection of text files:
 2. **Validate**: verify that every QA pair is supported by its source text, filtering out any hallucinated content.
 
 The pipeline relies on [deepeval](https://docs.confident-ai.com/)'s
-`generate_goldens_from_docs`, connected to any OpenAI-compatible provider via a
-custom LLM and a custom embedding model (both defined in `providers.py`, with
-provider settings in `config.yaml`).
+`generate_goldens_from_contexts`, connected to any OpenAI-compatible provider
+via a custom LLM (defined in `providers.py`, with provider settings in
+`config.yaml`). Each corpus document is chunked and each chunk is passed as a
+context together with its source file, so every generated record keeps its
+trace (`source_file` + `additional_metadata`).
 
 ## Quick start
 
@@ -77,16 +79,18 @@ one source document that is chunked into contexts.
 
 ## Dataset generation: step by step explaination
 
-1. `dataset_generator.py` loads the LLM provider and the embedding provider from
-   `config.yaml` (via `config.py`) and builds a `CustomOpenAI` (the
-   generation/critic model) from the LLM provider and a `CustomEmbeddingModel`
-   (the embedder) from the embedding provider.
-2. It lists every file in `./corpus/` and passes that list to
-   `generate_goldens_from_docs`.
-3. `generate_goldens_from_docs` chunks each document into contexts (using the
-   embedder), then generates a set of synthetic question/answer records.
+1. `dataset_generator.py` loads the LLM provider from `config.yaml` (via
+   `config.py`) and builds a `CustomOpenAI` (the generation model) from it.
+2. It lists every file in `./corpus/`, reads and chunks each document (tokens,
+   `--chunk-size` / `--chunk-overlap`), and passes the resulting contexts to
+   `generate_goldens_from_contexts` together with their source files.
+3. `generate_goldens_from_contexts` generates a set of synthetic
+   question/answer records per context, keeping the trace: each `Golden` has a
+   `source_file` and `additional_metadata` (`context_source_files`,
+   `used_source_files`, `synthetic_input_quality`, `evolutions`).
 4. The resulting records are **automatically saved** to
-   `./datasets/synthetic_qa_<YYYYMMDD_HHMMSS>.json` (timestamped filename).
+   `./datasets/synthetic_qa_<YYYYMMDD_HHMMSS>.json` (timestamped filename),
+   including `source_file` and `additional_metadata` per record.
 
 ### Dataset evaluation
 
@@ -111,13 +115,15 @@ By default it evaluates the **most recent** `synthetic_qa_*.json` file in
 
 `synthetic-qa-generate` (aka `python -m synthetic_qa_dataset.dataset_generator`):
 
-| Option                | Default                      | Purpose                                    |
-| --------------------- | ---------------------------- | ------------------------------------------ |
-| `--llm-provider`      | `llm_provider` in config.yaml| LLM (generation/critic) provider.          |
-| `--embedding-provider`| `embedding_provider` in config.yaml | Embedding provider.                |
-| `--corpus-dir`        | `./corpus`                   | Directory containing the source docs.      |
-| `--output-dir`        | `./datasets`                 | Where to save the generated dataset.       |
-| `--max-concurrent`    | `1`                          | Concurrent Synthesizer requests (serial).  |
+| Option                | Default                     | Purpose                                    |
+| --------------------- | --------------------------- | ------------------------------------------ |
+| `--llm-provider`      | `llm_provider` in config.yaml| LLM (generation) provider.                |
+| `--corpus-dir`        | `./corpus`                  | Directory containing the source docs.      |
+| `--output-dir`        | `./datasets`                | Where to save the generated dataset.       |
+| `--chunk-size`        | `1024`                      | Max tokens per chunk.                      |
+| `--chunk-overlap`     | `0`                         | Overlapping tokens between chunks.         |
+| `--max-goldens-per-context` | `2`                    | Records generated per context.             |
+| `--max-concurrent`    | `1`                         | Concurrent Synthesizer requests (serial).  |
 
 `synthetic-qa-evaluate` (aka `python -m synthetic_qa_dataset.eval_synthetic_dataset`):
 
@@ -131,7 +137,7 @@ By default it evaluates the **most recent** `synthetic_qa_*.json` file in
 Example with a local Ollama server:
 
 ```bash
-pdm run synthetic-qa-generate --llm-provider ollama --embedding-provider ollama
+pdm run synthetic-qa-generate --llm-provider ollama
 pdm run synthetic-qa-evaluate --llm-provider ollama --threshold 0.9
 ```
 
